@@ -4,6 +4,7 @@ use std::io::{BufReader, BufWriter};
 use std::path::PathBuf;
 use bincode::{serialize_into, deserialize_from};
 use fs2::FileExt;
+use crate::default_persist;
 use crate::index_table::IndexTable;
 
 #[repr(C)]
@@ -73,18 +74,14 @@ impl IndexTable for BTreeMapIndexTable {
     }
 
     fn persist(&self) -> anyhow::Result<()> {
-        let file = OpenOptions::new().write(true).truncate(true).open(&self.file_path)?;
-
-        // Lock the file
-        file.lock_exclusive()?;
-
-        let writer = BufWriter::new(&file);
-        serialize_into(writer, &self.table)?;
-
-        // Remember to unlock the file when done
-        file.unlock()?;
-
+        default_persist!(self, self.file_path.clone(), self.table);
         Ok(())
+    }
+
+
+    #[cfg(feature = "fuzzy-search")]
+    fn keys(&self) -> Vec<String> {
+        self.table.keys().cloned().collect()
     }
 
 

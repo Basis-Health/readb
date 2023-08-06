@@ -1,10 +1,9 @@
-# Readatabase (rdb)
+# Readatabase (readb)
 
 A simple, embedded read only key-value database implemented in Rust. The database strict focus on performance makes it
 infinitely faster than sled (see the benchmark section below). 
 
 ## Features
-
 - **Fast and Efficient**: Uses caching to speed up frequently accessed reads.
 - **Modular Design**: Switch between different indexing strategies and caching methods easily.
 - **Lock free reads**: Reads are lock free and hence can be performed concurrently.
@@ -95,31 +94,31 @@ There are three benchmarks:
 - 10%: Access 10% of the keys
 - 20%: Access 3.5% of the keys 0.2n times
 
-| Size       | RDB time   | Sled time   | Details   |
-|------------|------------|-------------|-----------|
-| 10         | 36 µs      | 1 µs        | Regular   |
-| 10         | 36 µs      | 115 ns      | 10%       |
-| 10         | 36 µs      | 220 ns      | 20%       |
-| ---------- | ---------- | ----------- | --------- |
-| 100        | 37 µs      | 16 µs       | Regular   |
-| 100        | 37 µs      | 1  µs       | 10%       |
-| 100        | 37 µs      | 3  µs       | 20%       |
-| ---------- | ---------- | ----------- | --------- |
-| 1000       | 41 µs      | 206 µs      | Regular   |
-| 1000       | 37 µs      | 18 µs       | 10%       |
-| 1000       | 39 µs      | 34 µs       | 20%       |
-| ---------- | ---------- | ----------- | --------- |
-| 10000      | 60 µs      | 3 ms        | Regular   |
-| 10000      | 40 µs      | 287 µs      | 10%       |
-| 10000      | 42 µs      | 534 µs      | 20%       |
-| ---------- | ---------- | ----------- | --------- |
-| 100000     | 232 µs     | 40 ms       | Regular   |
-| 100000     | 59 µs      | 4 ms        | 10%       |
-| 100000     | 77 µs      | 7 ms        | 20%       |
+| Size       | RDB time   | Sled time   | redb time | Details |
+|------------|------------|-------------|-----------|---------|
+| 10         | 36 µs      | 1 µs        | 910 ns    | Regular |
+| 10         | 36 µs      | 115 ns      | 350 ns    | 10%     |
+| 10         | 36 µs      | 220 ns      | 410 ns    | 20%     |
+| ---------- | ---------- | ----------- | --------- | ------- |
+| 100        | 37 µs      | 16 µs       | 12 µs     | Regular |
+| 100        | 37 µs      | 1  µs       | 1 µs      | 10%     |
+| 100        | 37 µs      | 3  µs       | 2 µs      | 20%     |
+| ---------- | ---------- | ----------- | --------- | ------- |
+| 1000       | 41 µs      | 206 µs      | 234 µs    | Regular |
+| 1000       | 37 µs      | 18 µs       | 22 µs     | 10%     |
+| 1000       | 39 µs      | 34 µs       | 43 µs     | 20%     |
+| ---------- | ---------- | ----------- | --------- | ------- |
+| 10000      | 60 µs      | 3 ms        | 3.6 ms    | Regular |
+| 10000      | 40 µs      | 287 µs      | 352 µs    | 10%     |
+| 10000      | 42 µs      | 534 µs      | 691 µs    | 20%     |
+| ---------- | ---------- | ----------- | --------- | ------- |
+| 100000     | 232 µs     | 40 ms       | 52 ms     | Regular |
+| 100000     | 59 µs      | 4 ms        | 5 ms      | 10%     |
+| 100000     | 77 µs      | 7 ms        | 10 ms     | 20%     |
 
 ![Benchmark Plot](./info/img.png)
 
-RDB performs significantly better than sled when the data size is large enough. Because of rdb's unique index design,
+RDB performs significantly better than sled and redb when the data size is large enough. Because of rdb's unique index design,
 the performance improvement grows as the data size increases.
 
 ## Roadmap
@@ -142,4 +141,3 @@ the performance improvement grows as the data size increases.
   - [ ] ARC
   - [ ] MRU
 - [x] Add delete on keys
-- [ ] Add fuzzy search on keys

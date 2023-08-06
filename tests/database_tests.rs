@@ -1,7 +1,7 @@
 use std::io::Write;
 use rand::{Rng, SeedableRng};
 #[cfg(feature = "index-write")]
-use rdb::{DatabaseSettings, DefaultDatabase, IndexType, new_index_table, IndexTable};
+use readb::{DatabaseSettings, DefaultDatabase, IndexType, new_index_table, IndexTable};
 
 #[test]
 #[cfg(feature = "index-write")]

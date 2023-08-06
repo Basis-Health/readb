@@ -12,6 +12,7 @@ pub enum CompressionType {
 #[cfg(feature = "remote-brotli-compression")]
 const DEFAULT_BROTLI_BUFFER_SIZE: usize = 4096;
 
+#[allow(unused)]
 pub(crate) fn decompress(path: &Path, compression_type: &CompressionType) -> Result<()> {
     let mut f = std::fs::OpenOptions::new().read(true).write(true).open(path)?;
     decompress_file(&mut f, compression_type)

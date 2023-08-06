@@ -2,7 +2,7 @@ use std::io::Write;
 use std::path::PathBuf;
 use tokio::sync::OnceCell;
 use warp::Filter;
-use rdb::{clone_from, DatabaseSettings, DefaultDatabase, IndexTable, IndexType, new_index_table};
+use readb::{clone_from, DatabaseSettings, DefaultDatabase, IndexTable, IndexType, new_index_table};
 
 static SERVER_STARTED: OnceCell<()> = OnceCell::const_new();
 

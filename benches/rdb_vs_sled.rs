@@ -1,10 +1,11 @@
 use std::cmp::max;
 use criterion::{Criterion, black_box, criterion_group, criterion_main};
-use rdb::{DatabaseSettings, DefaultDatabase, IndexType, new_index_table, IndexTable};
+use readb::{DatabaseSettings, DefaultDatabase, IndexType, new_index_table, IndexTable};
 use sled;
 use std::fs::write;
 use rand::SeedableRng;
 use rand::seq::SliceRandom;
+use redb::{Database, Error, ReadableTable, TableDefinition};
 
 fn benchmark_retrieval_from_db(c: &mut Criterion) {
     // Helper function to create data for our benchmark.
@@ -176,6 +177,85 @@ fn benchmark_retrieval_from_db(c: &mut Criterion) {
                 }
             });
         });
+
+        let redb = Database::create(dir.path().join("./redb.rdb")).unwrap();
+        const TABLE: TableDefinition<&str, &str> = TableDefinition::new("my_data");
+
+
+        let write_txn = redb.begin_write().unwrap();
+        {
+            let mut table = write_txn.open_table(TABLE).unwrap();
+            for (key, value) in &data_copy {
+                table.insert(key.as_str(), value.as_str()).unwrap();
+            }
+        }
+        write_txn.commit().unwrap();
+
+        // Benchmark for redb
+        group.bench_function("redb_retrieve", |b| {
+            // shuffle data with seed 42
+            let mut data = data_copy.clone();
+            let mut rng = rand::rngs::StdRng::seed_from_u64(42);
+            data.shuffle(&mut rng);
+
+            // Measure retrieval for redb
+            b.iter(|| {
+                let read_txn = redb.begin_read().unwrap();
+                let table = read_txn.open_table(TABLE).unwrap();
+                for (key, _) in &data {
+                    let _ = table.get(black_box(key.as_str())).unwrap();
+                }
+            });
+        });
+
+        // Benchmark for redb
+        group.bench_function("redb_retrieve_10_percent", |b| {
+            // shuffle data with seed 42
+            let mut data = data_copy.clone();
+            let mut rng = rand::rngs::StdRng::seed_from_u64(42);
+            data.shuffle(&mut rng);
+            // take 10% of the data
+            let data = data.into_iter().take(n / 10).collect::<Vec<_>>();
+
+            // Measure retrieval for redb
+            b.iter(|| {
+                let read_txn = redb.begin_read().unwrap();
+                let table = read_txn.open_table(TABLE).unwrap();
+                for (key, _) in &data {
+                    let _ = table.get(black_box(key.as_str())).unwrap();
+                }
+            });
+        });
+
+        // Benchmark for redb
+        group.bench_function("redb_retrieve_20_percent_with_repetitions", |b| {
+            // shuffle data with seed 42
+            let mut data = Vec::new();
+            let mut rng = rand::rngs::StdRng::seed_from_u64(42);
+
+            let mut indexes = (0..n).collect::<Vec<_>>();
+            indexes.shuffle(&mut rng);
+            // consider only 3.5% of the indexes
+            let length = max((n as f64 * 0.035) as usize, 1);
+            let indexes = indexes.into_iter().take(length).collect::<Vec<_>>();
+
+            let twenty_percent = (n as f64 * 0.2) as usize;
+            for _ in 0..twenty_percent {
+                // take a random index
+                let index = indexes.choose(&mut rng).unwrap();
+                data.push(data_copy[*index].clone());
+            }
+
+            // Measure retrieval for redb
+            b.iter(|| {
+                let read_txn = redb.begin_read().unwrap();
+                let table = read_txn.open_table(TABLE).unwrap();
+                for (key, _) in &data {
+                    let _ = table.get(black_box(key.as_str())).unwrap();
+                }
+            });
+        });
+
 
 
         group.finish();

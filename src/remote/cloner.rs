@@ -37,7 +37,6 @@ async fn clone_from_remote(address: &str, path: &PathBuf, compression: &Option<C
 mod tests {
     use super::*;
     use warp::Filter;
-    use std::sync::Arc;
     use std::time::Duration;
     use tokio::sync::OnceCell;
     use tempfile::tempdir;
