@@ -95,6 +95,10 @@ impl<C: Cache> Database<C, LazyLoader> {
         self.index_table.insert(new.to_string(), *index)
     }
 
+    pub fn delete(&mut self, key: &str) -> anyhow::Result<()> {
+        self.index_table.delete(key)
+    }
+
     pub fn persist(&mut self) -> anyhow::Result<()> {
         self.index_table.persist()
     }

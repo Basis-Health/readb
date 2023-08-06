@@ -18,6 +18,7 @@ infinitely faster than sled (see the benchmark section below).
 - **new**: Create a new database.
 - **get**: Get the value associated with a key.
 - **link**: Link a key to another key
+- **delete**: Delete a key, does not delete any links or actual data
 - **persist**: Persist the new links to the database
 
 ### index-write feature
@@ -84,6 +85,9 @@ assert!(non_existent_value.is_none());
 ```
 
 DefaultDatabase is a HashMap based indexing strategy and a LFU based caching strategy
+
+The database directory has to be a directory that exists and is writable. Alternatively, you cau use the `ignore-path-check`
+feature to ignore the path check and create the database in a file. However, that feature is not tested and is not recommended.
 
 ## Benchmarks
 There are three benchmarks:
