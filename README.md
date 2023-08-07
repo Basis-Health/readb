@@ -66,6 +66,25 @@ cargo build --release
 
 ### Usage
 
+## Populating the database
+
+The database uses line number as the key and the line as the value. After you have your data in a file, rename it to
+`.rdb.data`. Then with the `index-write` feature enabled, you can open the database indexes and populate them with the
+keys, the index_path should be in the same directory as the `.rdb.data` file, but the name should be `.rdb.index`:
+
+```rust
+let mut index_table: Box<dyn IndexTable> =
+    new_index_table(index_path, IndexType::HashMap).unwrap();
+
+index_table.insert(KEY, LINE_NUMBER).unwrap();
+
+index_table.persist().unwrap();
+```
+
+Lastly create an `.rdb.type` file, in which you specify the type of the index table, for example `HashMap` or `BTreeMap`.
+
+## Reading from the database
+
 To use the database in your Rust project, add it as a dependency in your `Cargo.toml`:
 
 ```toml
@@ -73,7 +92,7 @@ To use the database in your Rust project, add it as a dependency in your `Cargo.
 readb = { path = "path-to-your-local-repo" }
 ```
 
-Then, use the provided API to interact with the database:
+Then, use the provided API to interact with the database, database_dir is the directory where the database is located (the `.rdb.*` files):
 
 ```rust
 use readb::{Database, DatabaseSettings, IndexType};
