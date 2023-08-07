@@ -148,6 +148,20 @@ impl<C: Cache> Database<C, LazyLoader> {
     /// Commits the current state of the database, ensuring data persistence.
     /// Note, this only commits the index table.
     pub fn persist(&mut self) -> anyhow::Result<()> {
-        self.index_table.persist()
+        self.index_table.persist()?;
+
+        #[cfg(feature = "write")]
+        self.loader.persist()?;
+
+        Ok(())
+    }
+
+    /// Adds a new key-value pair to the database.
+    /// Note: This method is only available if the "write" feature is enabled.
+    /// Should not be used in production.
+    #[cfg(feature = "write")]
+    pub fn put(&mut self, key: &str, value: &str) -> anyhow::Result<()> {
+        let index = self.loader.add(value)?;
+        self.index_table.insert(key.to_string(), index)
     }
 }
