@@ -1,4 +1,7 @@
-use std::fs::{File, OpenOptions};
+use std::fs::File;
+
+#[cfg(feature = "write")]
+use std::fs::OpenOptions;
 use std::io::{self, prelude::*, SeekFrom};
 use std::path::PathBuf;
 
@@ -26,11 +29,6 @@ impl LazyFile {
             #[cfg(not(feature = "write"))]
             {
                 self.file = Some(File::open(&self.path)?);
-
-                // Count the number of lines in the file
-                let file = self.file.as_mut().unwrap();
-                let reader = io::BufReader::new(file);
-                self.line_count = reader.lines().count();
             }
 
             #[cfg(feature = "write")]
