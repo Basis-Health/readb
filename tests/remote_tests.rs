@@ -1,4 +1,4 @@
-#[cfg(feature = "remote-cloning")]
+#[cfg(all(feature = "remote-cloning", feature = "index-write"))]
 mod tests {
     use readb::{
         clone_from, new_index_table, DatabaseSettings, DefaultDatabase, IndexTable, IndexType,
