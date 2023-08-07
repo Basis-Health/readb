@@ -51,7 +51,7 @@ mod tests {
             cache_size: None,
             index_type: IndexType::HashMap,
         })
-            .unwrap();
+        .unwrap();
 
         // And let's retrieve some data
         for (key, expected_value) in random_strings_with_keys.iter() {
@@ -135,7 +135,7 @@ mod tests {
                     cache_size: None,
                     index_type: IndexType::HashMap,
                 })
-                    .unwrap();
+                .unwrap();
 
                 // barrier
                 c.wait();

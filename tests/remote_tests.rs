@@ -100,7 +100,7 @@ mod tests {
             cache_size: None,
             index_type: IndexType::HashMap,
         })
-            .unwrap();
+        .unwrap();
 
         let existent_value = db.get("hi").unwrap();
         assert_eq!(existent_value.unwrap(), "hello".to_string());
