@@ -38,10 +38,7 @@ impl LazyFile {
                 // check if the file exists
                 if self.path.exists() {
                     {
-                        let f = OpenOptions::new()
-                            .read(true)
-                            .write(true)
-                            .open(&self.path)?;
+                        let f = OpenOptions::new().read(true).write(true).open(&self.path)?;
                         self.file = Some(f);
                     }
 
@@ -73,7 +70,6 @@ impl LazyFile {
         }
     }
 
-
     #[cfg(feature = "write")]
     pub(crate) fn add(&mut self, line: &str) -> anyhow::Result<usize> {
         self.open_file()?;
@@ -83,8 +79,8 @@ impl LazyFile {
         file.seek(SeekFrom::End(0))?;
         let mut writer = io::BufWriter::new(file);
 
-        writer.write(line.as_bytes())?;
-        writer.write(b"\n")?;
+        writer.write_all(line.as_bytes())?;
+        writer.write_all(b"\n")?;
 
         self.line_count += 1;
         println!("Line count: {}", self.line_count - 1);

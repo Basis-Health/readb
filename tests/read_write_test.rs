@@ -1,7 +1,7 @@
 #[cfg(feature = "write")]
 mod tests {
-    use readb::{DatabaseSettings, DefaultDatabase};
     use readb::IndexType::HashMap;
+    use readb::{DatabaseSettings, DefaultDatabase};
 
     #[test]
     fn test_write_and_read() {
@@ -11,7 +11,8 @@ mod tests {
                 path: Some(tempdir.path().to_path_buf()),
                 cache_size: None,
                 index_type: HashMap,
-            }).unwrap();
+            })
+            .unwrap();
 
             database.put("key", "value").unwrap();
             database.put("another_key", "another_value").unwrap();
@@ -23,10 +24,14 @@ mod tests {
                 path: Some(tempdir.path().to_path_buf()),
                 cache_size: None,
                 index_type: HashMap,
-            }).unwrap();
+            })
+            .unwrap();
 
             assert_eq!(database.get("key").unwrap().unwrap(), "value");
-            assert_eq!(database.get("another_key").unwrap().unwrap(), "another_value");
+            assert_eq!(
+                database.get("another_key").unwrap().unwrap(),
+                "another_value"
+            );
         }
     }
 }
