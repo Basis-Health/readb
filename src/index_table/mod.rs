@@ -26,6 +26,7 @@ macro_rules! default_persist {
         let file = OpenOptions::new()
             .write(true)
             .truncate(true)
+            .create(true)
             .open($file_path)?;
 
         // Lock the file

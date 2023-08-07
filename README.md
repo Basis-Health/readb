@@ -42,6 +42,15 @@ app, or being dependent on the file system.
   - Clone the database from a remote address to a local path
   - compression: Compression type to use for the transfer. If None, no compression is used
 
+### write feature
+The write feature should only be used for building the database. It is not recommended to use it in production as it
+is not tested and is not optimized for performance. There are two additional functions:
+- **insert**: Insert a new key-value pair into the database
+- **persist**: Persist the database to the disk
+
+Note that insert and persist are not thread safe and should not be used concurrently. Furthermore, you cannot use the
+get function after inserting a new key-value pair until you persist the database. Consider using the index-write feature
+if you just want to add new keys to the database.
 
 ## Getting Started
 
@@ -68,20 +77,26 @@ cargo build --release
 
 ## Populating the database
 
-The database uses line number as the key and the line as the value. After you have your data in a file, rename it to
-`.rdb.data`. Then with the `index-write` feature enabled, you can open the database indexes and populate them with the
-keys, the index_path should be in the same directory as the `.rdb.data` file, but the name should be `.rdb.index`:
+The database can be populated using the `write` feature. To use the write feature, add the following to your `Cargo.toml`:
 
-```rust
-let mut index_table: Box<dyn IndexTable> =
-    new_index_table(index_path, IndexType::HashMap).unwrap();
-
-index_table.insert(KEY, LINE_NUMBER).unwrap();
-
-index_table.persist().unwrap();
+```toml
+[dependencies]
+readb = { path = "path-to-your-local-repo", features = ["write"] }
 ```
 
-Lastly create an `.rdb.type` file, in which you specify the type of the index table, for example `HashMap` or `BTreeMap`.
+Then, use the provided API to populate the database:
+
+```rust
+let mut database = DefaultDatabase::new(DatabaseSettings {
+  path: Some(database_dir),
+  cache_size: None,
+  index_type: HashMap,
+}).unwrap();
+
+database.put("key", "value").unwrap();
+database.put("another_key", "another_value").unwrap();
+database.persist().unwrap();
+```
 
 ## Reading from the database
 
