@@ -3,6 +3,15 @@
 A simple, embedded read only key-value database implemented in Rust. The database strict focus on performance makes it
 infinitely faster than sled (see the benchmark section below). 
 
+## Why a read only database?
+
+More often than not, we need a database to act as a LUT (Look Up Table) for static data. We will pre-populate the database
+on startup and then use it for reads. In such a scenario, we do not need a database that supports writes. In fact, we can
+populate the database before starting the app and then use it as a read only database.
+
+At Basis Health, we use this database for exercise data. We can quickly query thousands of exercises without freezing the
+app, or being dependent on the file system.
+
 ## Features
 - **Fast and Efficient**: Uses caching to speed up frequently accessed reads.
 - **Modular Design**: Switch between different indexing strategies and caching methods easily.
@@ -94,7 +103,7 @@ There are three benchmarks:
 - 10%: Access 10% of the keys
 - 20%: Access 3.5% of the keys 0.2n times
 
-| Size       | RDB time   | Sled time   | redb time | Details |
+| Size       | readb time | sled time   | redb time | Details |
 |------------|------------|-------------|-----------|---------|
 | 10         | 36 µs      | 1 µs        | 910 ns    | Regular |
 | 10         | 36 µs      | 115 ns      | 350 ns    | 10%     |
@@ -141,3 +150,7 @@ the performance improvement grows as the data size increases.
   - [ ] ARC
   - [ ] MRU
 - [x] Add delete on keys
+
+## Future Work
+
+This project is intended as the groundwork for a key-value database with write support.
