@@ -1,19 +1,22 @@
-use std::cmp::max;
-use criterion::{Criterion, black_box, criterion_group, criterion_main};
-use readb::{DatabaseSettings, DefaultDatabase, IndexType, new_index_table, IndexTable};
-use sled;
-use std::fs::write;
-use rand::SeedableRng;
+use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use rand::seq::SliceRandom;
+use rand::SeedableRng;
+use readb::{new_index_table, DatabaseSettings, DefaultDatabase, IndexTable, IndexType};
 use redb::{Database, Error, ReadableTable, TableDefinition};
+use sled;
+use std::cmp::max;
+use std::fs::write;
 
 fn benchmark_retrieval_from_db(c: &mut Criterion) {
     // Helper function to create data for our benchmark.
     fn generate_data(n: usize) -> Vec<(String, String)> {
-        (0..n).map(|i| (format!("key_{}", i), format!("value_{}", i))).collect()
+        (0..n)
+            .map(|i| (format!("key_{}", i), format!("value_{}", i)))
+            .collect()
     }
 
-    for &n in &[10, 100, 1000, 10_000, 100_000] {  // Adjust this list for desired `n` values.
+    for &n in &[10, 100, 1000, 10_000, 100_000] {
+        // Adjust this list for desired `n` values.
         let data_copy = generate_data(n);
         let mut group = c.benchmark_group(format!("Retrieve {} items", n));
 
@@ -22,7 +25,8 @@ fn benchmark_retrieval_from_db(c: &mut Criterion) {
 
         // Insertion phase (not measured)
         {
-            let mut index_table: Box<dyn IndexTable> = new_index_table(path.clone(), IndexType::HashMap).unwrap();
+            let mut index_table: Box<dyn IndexTable> =
+                new_index_table(path.clone(), IndexType::HashMap).unwrap();
             for (i, (key, _)) in data_copy.iter().enumerate() {
                 index_table.insert(key.clone(), i).unwrap();
             }
@@ -31,7 +35,11 @@ fn benchmark_retrieval_from_db(c: &mut Criterion) {
 
         {
             // Create the data file, by storing the value in each line (not measured)
-            let content = data_copy.iter().map(|(_, value)| value.clone()).collect::<Vec<_>>().join("\n");
+            let content = data_copy
+                .iter()
+                .map(|(_, value)| value.clone())
+                .collect::<Vec<_>>()
+                .join("\n");
             write(path, content).unwrap();
         }
 
@@ -48,7 +56,8 @@ fn benchmark_retrieval_from_db(c: &mut Criterion) {
                     path: Some(dir.path().to_path_buf()),
                     cache_size: None,
                     index_type: IndexType::HashMap,
-                }).unwrap();
+                })
+                .unwrap();
 
                 for (key, _) in data.iter() {
                     let _ = db.get(black_box(key)).unwrap();
@@ -70,7 +79,8 @@ fn benchmark_retrieval_from_db(c: &mut Criterion) {
                     path: Some(dir.path().to_path_buf()),
                     cache_size: None,
                     index_type: IndexType::HashMap,
-                }).unwrap();
+                })
+                .unwrap();
 
                 for (key, _) in data.iter() {
                     let _ = db.get(black_box(key)).unwrap();
@@ -102,7 +112,8 @@ fn benchmark_retrieval_from_db(c: &mut Criterion) {
                     path: Some(dir.path().to_path_buf()),
                     cache_size: None,
                     index_type: IndexType::HashMap,
-                }).unwrap();
+                })
+                .unwrap();
 
                 for (key, _) in data.iter() {
                     let _ = db.get(black_box(key)).unwrap();
@@ -181,7 +192,6 @@ fn benchmark_retrieval_from_db(c: &mut Criterion) {
         let redb = Database::create(dir.path().join("./redb.rdb")).unwrap();
         const TABLE: TableDefinition<&str, &str> = TableDefinition::new("my_data");
 
-
         let write_txn = redb.begin_write().unwrap();
         {
             let mut table = write_txn.open_table(TABLE).unwrap();
@@ -255,8 +265,6 @@ fn benchmark_retrieval_from_db(c: &mut Criterion) {
                 }
             });
         });
-
-
 
         group.finish();
     }

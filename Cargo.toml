@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 authors = ["Alexander Procelewski <alex@basishealth.io>"]
 description = "A simple, efficient, and modular embedded read-only key-value database in Rust."
-repository = "https://github.com/Basis-Health/rdb"
+repository = "https://github.com/Basis-Health/readb"
 readme = "README.md"
 
 

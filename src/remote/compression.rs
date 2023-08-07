@@ -1,12 +1,12 @@
+use anyhow::Result;
 use std::io::{Read, Seek, Write};
 use std::path::Path;
-use anyhow::Result;
 
 pub enum CompressionType {
     Uncompressed,
 
     #[cfg(feature = "remote-brotli-compression")]
-    Brotli
+    Brotli,
 }
 
 #[cfg(feature = "remote-brotli-compression")]
@@ -14,11 +14,17 @@ const DEFAULT_BROTLI_BUFFER_SIZE: usize = 4096;
 
 #[allow(unused)]
 pub(crate) fn decompress(path: &Path, compression_type: &CompressionType) -> Result<()> {
-    let mut f = std::fs::OpenOptions::new().read(true).write(true).open(path)?;
+    let mut f = std::fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .open(path)?;
     decompress_file(&mut f, compression_type)
 }
 
-pub(crate) fn decompress_file(f: &mut std::fs::File, compression_type: &CompressionType) -> Result<()> {
+pub(crate) fn decompress_file(
+    f: &mut std::fs::File,
+    compression_type: &CompressionType,
+) -> Result<()> {
     match compression_type {
         CompressionType::Uncompressed => Ok(()),
 

@@ -1,8 +1,10 @@
+use readb::{
+    clone_from, new_index_table, DatabaseSettings, DefaultDatabase, IndexTable, IndexType,
+};
 use std::io::Write;
 use std::path::PathBuf;
 use tokio::sync::OnceCell;
 use warp::Filter;
-use readb::{clone_from, DatabaseSettings, DefaultDatabase, IndexTable, IndexType, new_index_table};
 
 static SERVER_STARTED: OnceCell<()> = OnceCell::const_new();
 
@@ -27,7 +29,8 @@ fn create_mock_files_at_location(dir: PathBuf) {
     ];
 
     {
-        let mut index_table: Box<dyn IndexTable> = new_index_table(index_path, IndexType::HashMap).unwrap();
+        let mut index_table: Box<dyn IndexTable> =
+            new_index_table(index_path, IndexType::HashMap).unwrap();
 
         for (i, (key, _)) in random_strings_with_keys.iter().enumerate() {
             index_table.insert(key.to_string(), i).unwrap();
@@ -47,22 +50,23 @@ fn create_mock_files_at_location(dir: PathBuf) {
 
 async fn start_mock_server(dir: PathBuf) {
     let d = dir.as_os_str().to_str().unwrap().to_string();
-    SERVER_STARTED.get_or_init(|| async move {
-        let content = warp::path("content")
-            .and(warp::path::param::<String>())
-            .map(move |filetype: String| {
-                let file_path = format!("{}/.rdb.{}", d.as_str(), filetype);
-                let content = std::fs::read_to_string(file_path).unwrap();
-                warp::http::Response::builder()
-                    .header("content-type", "text/plain")
-                    .body(content)
-            })
-            .with(warp::log("mock_server"));
+    SERVER_STARTED
+        .get_or_init(|| async move {
+            let content = warp::path("content")
+                .and(warp::path::param::<String>())
+                .map(move |filetype: String| {
+                    let file_path = format!("{}/.rdb.{}", d.as_str(), filetype);
+                    let content = std::fs::read_to_string(file_path).unwrap();
+                    warp::http::Response::builder()
+                        .header("content-type", "text/plain")
+                        .body(content)
+                })
+                .with(warp::log("mock_server"));
 
-        let _ = tokio::spawn(warp::serve(content).run(([127, 0, 0, 1], 3030)));
-    }).await;
+            let _ = tokio::spawn(warp::serve(content).run(([127, 0, 0, 1], 3030)));
+        })
+        .await;
 }
-
 
 #[tokio::test]
 async fn remote_clone_test() {
@@ -74,18 +78,27 @@ async fn remote_clone_test() {
     create_mock_files_at_location(data_dir.clone());
     start_mock_server(data_dir.clone()).await;
 
-    let database_dir = dir.path().to_path_buf().join("database").as_os_str().to_str().unwrap().to_string();
+    let database_dir = dir
+        .path()
+        .to_path_buf()
+        .join("database")
+        .as_os_str()
+        .to_str()
+        .unwrap()
+        .to_string();
     std::fs::create_dir_all(database_dir.clone()).unwrap();
 
-    clone_from("http://localhost:3030/content", database_dir.as_str(), None).await.unwrap();
+    clone_from("http://localhost:3030/content", database_dir.as_str(), None)
+        .await
+        .unwrap();
 
     // Now let's create the database
     let mut db = DefaultDatabase::new(DatabaseSettings {
         path: Some(PathBuf::from(database_dir)),
         cache_size: None,
         index_type: IndexType::HashMap,
-    }).unwrap();
-
+    })
+    .unwrap();
 
     let existent_value = db.get("hi").unwrap();
     assert_eq!(existent_value.unwrap(), "hello".to_string());

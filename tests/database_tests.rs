@@ -1,7 +1,7 @@
-use std::io::Write;
 use rand::{Rng, SeedableRng};
 #[cfg(feature = "index-write")]
-use readb::{DatabaseSettings, DefaultDatabase, IndexType, new_index_table, IndexTable};
+use readb::{new_index_table, DatabaseSettings, DefaultDatabase, IndexTable, IndexType};
+use std::io::Write;
 
 #[test]
 #[cfg(feature = "index-write")]
@@ -27,7 +27,8 @@ fn create_index_table_and_then_retrieve_from_db() {
     ];
 
     {
-        let mut index_table: Box<dyn IndexTable> = new_index_table(index_path, IndexType::HashMap).unwrap();
+        let mut index_table: Box<dyn IndexTable> =
+            new_index_table(index_path, IndexType::HashMap).unwrap();
 
         for (i, (key, _)) in random_strings_with_keys.iter().enumerate() {
             index_table.insert(key.to_string(), i).unwrap();
@@ -44,13 +45,13 @@ fn create_index_table_and_then_retrieve_from_db() {
         }
     }
 
-
     // Now let's create the database
     let mut db = DefaultDatabase::new(DatabaseSettings {
         path: Some(dir.path().to_path_buf()),
         cache_size: None,
         index_type: IndexType::HashMap,
-    }).unwrap();
+    })
+    .unwrap();
 
     // And let's retrieve some data
     for (key, expected_value) in random_strings_with_keys.iter() {
@@ -85,10 +86,13 @@ fn n_threads_accessing_at_the_same_time_test(n: usize, thread_count: usize) {
         file.write_all(b"HashMap\n").unwrap();
     }
 
-    let random_key_values = (0..n).map(|i| (format!("key{}", i), format!("value{}", i))).collect::<Vec<_>>();
+    let random_key_values = (0..n)
+        .map(|i| (format!("key{}", i), format!("value{}", i)))
+        .collect::<Vec<_>>();
 
     {
-        let mut index_table: Box<dyn IndexTable> = new_index_table(index_path.clone(), IndexType::HashMap).unwrap();
+        let mut index_table: Box<dyn IndexTable> =
+            new_index_table(index_path.clone(), IndexType::HashMap).unwrap();
 
         for (i, (key, _)) in random_key_values.iter().enumerate() {
             index_table.insert(key.to_string(), i).unwrap();
@@ -109,7 +113,7 @@ fn n_threads_accessing_at_the_same_time_test(n: usize, thread_count: usize) {
     let mut keys_to_access_by_thread: Vec<Vec<String>> = Vec::new();
     for _ in 0..thread_count {
         let mut keys_to_access = Vec::new();
-        for _ in 0..n/10 {
+        for _ in 0..n / 10 {
             let index = rng.gen_range(0..n);
             keys_to_access.push(random_key_values[index].0.clone());
         }
@@ -131,7 +135,8 @@ fn n_threads_accessing_at_the_same_time_test(n: usize, thread_count: usize) {
                 path: Some(dir),
                 cache_size: None,
                 index_type: IndexType::HashMap,
-            }).unwrap();
+            })
+            .unwrap();
 
             // barrier
             c.wait();
@@ -139,7 +144,10 @@ fn n_threads_accessing_at_the_same_time_test(n: usize, thread_count: usize) {
             for key in keys_to_access {
                 let value = db.get(&key).unwrap();
                 assert!(value.is_some());
-                assert_eq!(value.unwrap(), format!("value{}", key[3..].parse::<usize>().unwrap()));
+                assert_eq!(
+                    value.unwrap(),
+                    format!("value{}", key[3..].parse::<usize>().unwrap())
+                );
             }
         }));
     }

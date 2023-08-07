@@ -1,11 +1,11 @@
+use crate::default_persist;
+use crate::index_table::IndexTable;
+use bincode::{deserialize_from, serialize_into};
+use fs2::FileExt;
 use std::collections::BTreeMap;
 use std::fs::{File, OpenOptions};
 use std::io::{BufReader, BufWriter};
 use std::path::PathBuf;
-use bincode::{serialize_into, deserialize_from};
-use fs2::FileExt;
-use crate::default_persist;
-use crate::index_table::IndexTable;
 
 #[repr(C)]
 pub struct BTreeMapIndexTable {
@@ -15,7 +15,11 @@ pub struct BTreeMapIndexTable {
 
 impl BTreeMapIndexTable {
     pub fn new(path: PathBuf) -> anyhow::Result<Self> {
-        let file = OpenOptions::new().read(true).write(true).create(true).open(&path)?;
+        let file = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .open(&path)?;
 
         // Lock the file
         file.lock_exclusive()?;
@@ -29,7 +33,10 @@ impl BTreeMapIndexTable {
         // Remember to unlock the file when done
         file.unlock()?;
 
-        Ok(Self { table, file_path: path })
+        Ok(Self {
+            table,
+            file_path: path,
+        })
     }
 
     pub fn new_default(path: PathBuf) -> anyhow::Result<Self> {
@@ -78,19 +85,16 @@ impl IndexTable for BTreeMapIndexTable {
         Ok(())
     }
 
-
     #[cfg(feature = "fuzzy-search")]
     fn keys(&self) -> Vec<String> {
         self.table.keys().cloned().collect()
     }
-
 
     #[cfg(test)]
     fn index_type(&self) -> &str {
         "btree"
     }
 }
-
 
 #[cfg(test)]
 mod tests {

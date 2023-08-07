@@ -38,8 +38,8 @@
 //! For a detailed guide and benchmarking, please refer to the README.
 
 mod cache;
-mod io;
 pub(crate) mod index_table;
+mod io;
 pub use index_table::factory::IndexType;
 
 mod api;

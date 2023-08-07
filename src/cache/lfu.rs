@@ -1,6 +1,6 @@
-use std::collections::{BinaryHeap, HashMap, hash_map::Entry};
-use std::cmp::Reverse;
 use crate::cache::Cache;
+use std::cmp::Reverse;
+use std::collections::{hash_map::Entry, BinaryHeap, HashMap};
 
 const DEFAULT_CAPACITY: usize = 1024;
 
@@ -35,8 +35,8 @@ impl Cache for LfuCache {
                 *frequency += 1;
                 self.frequencies.push(Reverse((*frequency, *key)));
                 Some(value.clone())
-            },
-            None => None
+            }
+            None => None,
         }
     }
 
@@ -60,8 +60,8 @@ impl Cache for LfuCache {
 
 #[cfg(test)]
 mod tests {
-    use crate::cache::Cache;
     use crate::cache::lfu::LfuCache;
+    use crate::cache::Cache;
 
     #[test]
     fn create_lfu_cache() {

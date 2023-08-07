@@ -1,9 +1,9 @@
-use std::path::PathBuf;
 use crate::cache::Cache;
 use crate::index_table::factory::{IndexFactory, IndexType};
 use crate::index_table::IndexTable;
-use crate::io::Loader;
 use crate::io::loader::LazyLoader;
+use crate::io::Loader;
+use std::path::PathBuf;
 
 /// The main database structure.
 ///
@@ -70,9 +70,8 @@ impl<C: Cache> Database<C, LazyLoader> {
         Ok(Database {
             index_table,
             cache,
-            loader: LazyLoader::new(path.join("./.rdb.data"))
+            loader: LazyLoader::new(path.join("./.rdb.data")),
         })
-
     }
 
     /// Constructs a new `Database` instance with default settings.

@@ -1,11 +1,11 @@
-use std::fs::File;
-use std::io::{BufRead, BufReader, BufWriter, Write};
-use std::path::PathBuf;
-use fs2::FileExt;
 use crate::index_table::btree::BTreeMapIndexTable;
 use crate::index_table::hash_map::HashMapIndexTable;
 use crate::index_table::IndexTable;
 use anyhow::{bail, Result};
+use fs2::FileExt;
+use std::fs::File;
+use std::io::{BufRead, BufReader, BufWriter, Write};
+use std::path::PathBuf;
 
 const TYPE_EXTENSION: &str = "type";
 const DEFAULT_INDEX_NAME: &str = ".rdb.index";
@@ -39,7 +39,7 @@ impl IndexFactory {
         let (path, type_path) = IndexFactory::path2path(path);
 
         // Create the file
-        let file = File::create(&type_path)?;
+        let file = File::create(type_path)?;
         file.lock_exclusive()?;
 
         // Write the type to the file
@@ -62,7 +62,7 @@ impl IndexFactory {
     pub fn load(&self, path: PathBuf) -> Result<Box<dyn IndexTable>> {
         let (path, type_path) = IndexFactory::path2path(path);
 
-        let file = File::open(&type_path)?;
+        let file = File::open(type_path)?;
 
         // Lock the file
         file.lock_exclusive()?;

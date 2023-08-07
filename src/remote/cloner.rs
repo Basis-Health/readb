@@ -1,25 +1,33 @@
+use crate::remote::compression::CompressionType;
+use anyhow::Result;
 use std::io::Write;
 use std::path::PathBuf;
-use anyhow::Result;
-use crate::remote::compression::CompressionType;
 
 const LOCAL_PREFIX: &str = ".rdb";
 const EXTENSIONS: [&str; 3] = ["type", "index", "data"];
 
-pub async fn clone_from(address: &str, path: &str, compression: Option<CompressionType>) -> Result<()> {
+pub async fn clone_from(
+    address: &str,
+    path: &str,
+    compression: Option<CompressionType>,
+) -> Result<()> {
     let local_path = PathBuf::from(path);
     for e in EXTENSIONS {
         let local_extension = format!("./{}.{}", LOCAL_PREFIX, e);
         let local_file = local_path.join(local_extension);
         let remote_file = format!("{}/{}", address, e);
 
-        clone_from_remote(&remote_file,  &local_file, &compression).await?;
+        clone_from_remote(&remote_file, &local_file, &compression).await?;
     }
 
     Ok(())
 }
 
-async fn clone_from_remote(address: &str, path: &PathBuf, compression: &Option<CompressionType>) -> Result<()> {
+async fn clone_from_remote(
+    address: &str,
+    path: &PathBuf,
+    compression: &Option<CompressionType>,
+) -> Result<()> {
     let mut response = reqwest::get(address).await?;
     let mut file = std::fs::File::create(path)?;
     while let Some(chunk) = response.chunk().await? {
@@ -36,10 +44,10 @@ async fn clone_from_remote(address: &str, path: &PathBuf, compression: &Option<C
 #[cfg(test)]
 mod tests {
     use super::*;
-    use warp::Filter;
     use std::time::Duration;
-    use tokio::sync::OnceCell;
     use tempfile::tempdir;
+    use tokio::sync::OnceCell;
+    use warp::Filter;
 
     static SERVER_ADDR: &str = "http://127.0.0.1:8080";
     static SERVER_STARTED: OnceCell<()> = OnceCell::const_new();
@@ -47,17 +55,23 @@ mod tests {
     const SERVER_FILE_PATH: &str = "/test/some";
 
     async fn start_mock_server() {
-        SERVER_STARTED.get_or_init(|| async {
-            let route = warp::any()
-                .map(|| {
-                    let mut response = warp::http::Response::new(warp::hyper::Body::from("Hello, World!"));
-                    response.headers_mut().insert("content-type", warp::http::HeaderValue::from_static("text/plain"));
-                    response
-                })
-                .with(warp::log("mock_server"));
+        SERVER_STARTED
+            .get_or_init(|| async {
+                let route = warp::any()
+                    .map(|| {
+                        let mut response =
+                            warp::http::Response::new(warp::hyper::Body::from("Hello, World!"));
+                        response.headers_mut().insert(
+                            "content-type",
+                            warp::http::HeaderValue::from_static("text/plain"),
+                        );
+                        response
+                    })
+                    .with(warp::log("mock_server"));
 
-            let _ = tokio::spawn(warp::serve(route).run(([127, 0, 0, 1], 8080)));
-        }).await;
+                let _ = tokio::spawn(warp::serve(route).run(([127, 0, 0, 1], 8080)));
+            })
+            .await;
     }
 
     #[tokio::test]

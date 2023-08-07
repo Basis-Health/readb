@@ -54,8 +54,8 @@ Make sure you have Rust and Cargo installed. If not, [install them from the offi
 Clone the repository:
 
 ```bash
-git clone https://github.com/Basis-Health/rdb.git
-cd rdb
+git clone https://github.com/Basis-Health/readb.git
+cd readb
 ```
 
 Then build the project:
@@ -70,13 +70,13 @@ To use the database in your Rust project, add it as a dependency in your `Cargo.
 
 ```toml
 [dependencies]
-rdb = { path = "path-to-your-local-repo" }
+readb = { path = "path-to-your-local-repo" }
 ```
 
 Then, use the provided API to interact with the database:
 
 ```rust
-use rdb::{Database, DatabaseSettings, IndexType};
+use readb::{Database, DatabaseSettings, IndexType};
 
 let mut db = DefaultDatabase::new(DatabaseSettings {
     path: Some(PathBuf::from(database_dir)),
@@ -127,7 +127,7 @@ There are three benchmarks:
 
 ![Benchmark Plot](./info/img.png)
 
-RDB performs significantly better than sled and redb when the data size is large enough. Because of rdb's unique index design,
+readb performs significantly better than sled and redb when the data size is large enough. Because of rdb's unique index design,
 the performance improvement grows as the data size increases.
 
 ## Roadmap

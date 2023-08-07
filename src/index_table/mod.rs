@@ -1,6 +1,6 @@
 // Eventually hide the implementation of the index table
-pub mod hash_map;
 pub mod btree;
+pub mod hash_map;
 
 pub(crate) mod factory;
 
@@ -23,7 +23,10 @@ pub trait IndexTable {
 #[macro_export]
 macro_rules! default_persist {
     ($self:expr, $file_path:expr, $table:expr) => {
-        let file = OpenOptions::new().write(true).truncate(true).open($file_path)?;
+        let file = OpenOptions::new()
+            .write(true)
+            .truncate(true)
+            .open($file_path)?;
 
         // Lock the file
         file.lock_exclusive()?;
@@ -33,6 +36,5 @@ macro_rules! default_persist {
 
         // Remember to unlock the file when done
         file.unlock()?;
-
     };
 }

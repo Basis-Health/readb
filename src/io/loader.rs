@@ -1,6 +1,6 @@
-use std::path::PathBuf;
 use crate::io::lazy_file::LazyFile;
 use crate::io::Loader;
+use std::path::PathBuf;
 
 pub struct LazyLoader {
     file: LazyFile,
