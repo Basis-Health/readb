@@ -1,7 +1,7 @@
 use crate::index_table::factory::IndexType;
 use crate::index_table::IndexTable;
-use std::path::PathBuf;
 use anyhow::bail;
+use std::path::PathBuf;
 
 pub fn new_index_table(
     location: PathBuf,
@@ -14,6 +14,6 @@ pub fn new_index_table(
         IndexType::BTreeMap => Box::new(crate::index_table::btree::BTreeMapIndexTable::new(
             location,
         )?),
-        IndexType::Auto => bail!("Cannot create index with type Auto")
+        IndexType::Auto => bail!("Cannot create index with type Auto"),
     })
 }
