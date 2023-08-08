@@ -131,6 +131,9 @@ DefaultDatabase is a HashMap based indexing strategy and a LFU based caching str
 The database directory has to be a directory that exists and is writable. Alternatively, you cau use the `ignore-path-check`
 feature to ignore the path check and create the database in a file. However, that feature is not tested and is not recommended.
 
+If you don't know your index type, you can use `IndexType::Auto` to automatically detect the index type. However, this
+is not supported for creating/writing to the database.
+
 ## Benchmarks
 There are three benchmarks:
 - Regular: Access each key once
@@ -184,6 +187,12 @@ the performance improvement grows as the data size increases.
   - [ ] ARC
   - [ ] MRU
 - [x] Add delete on keys
+
+## Stability
+
+The project is still in beta, albeit it is stable enough to be used in production. The API may be extended in the future,
+but the functionality will remain the same. We will try to keep it backwards compatible on the 0.x.x versions. We guarantee
+backwards compatibility on the patch versions.
 
 ## Future Work
 
