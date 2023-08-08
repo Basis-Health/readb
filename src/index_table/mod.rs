@@ -6,7 +6,7 @@ pub(crate) mod factory;
 
 use anyhow::Result;
 
-pub trait IndexTable {
+pub trait IndexTable: Send + Sync {
     fn get(&self, key: &str) -> Option<&usize>;
     fn insert(&mut self, key: String, value: usize) -> Result<()>;
     fn delete(&mut self, key: &str) -> Result<()>;
