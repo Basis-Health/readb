@@ -1,6 +1,6 @@
 #[cfg(feature = "write")]
 mod tests {
-    use readb::IndexType::HashMap;
+    use readb::IndexType::{Auto, HashMap};
     use readb::{DatabaseSettings, DefaultDatabase};
 
     #[test]
@@ -23,7 +23,7 @@ mod tests {
             let mut database = DefaultDatabase::new(DatabaseSettings {
                 path: Some(tempdir.path().to_path_buf()),
                 cache_size: None,
-                index_type: HashMap,
+                index_type: Auto,
             })
             .unwrap();
 

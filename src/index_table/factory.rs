@@ -87,6 +87,7 @@ impl IndexFactory {
                 self.index_type = file_type;
 
                 // If the index type is Auto, then use the type in the file
+                file.unlock()?;
                 return self.load(path);
             }
 
