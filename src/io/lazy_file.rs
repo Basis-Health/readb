@@ -81,7 +81,6 @@ impl LazyFile {
         writer.write_all(b"\n")?;
 
         self.line_count += 1;
-        println!("Line count: {}", self.line_count - 1);
         Ok(self.line_count - 1)
     }
 
