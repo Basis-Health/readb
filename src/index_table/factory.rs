@@ -14,6 +14,8 @@ const DEFAULT_INDEX_NAME: &str = ".rdb.index";
 pub enum IndexType {
     HashMap,
     BTreeMap,
+    // Determined at runtime, or HashMap if not specified
+    Auto,
 }
 
 pub struct IndexFactory {
@@ -47,19 +49,21 @@ impl IndexFactory {
         match self.index_type {
             IndexType::HashMap => writer.write_all(b"HashMap")?,
             IndexType::BTreeMap => writer.write_all(b"BTreeMap")?,
+            IndexType::Auto => bail!("Cannot create index with type Auto"),
         }
 
         // Create the appropriate index table
         let index_table: Box<dyn IndexTable> = match self.index_type {
             IndexType::HashMap => Box::new(HashMapIndexTable::new_default(path)?),
             IndexType::BTreeMap => Box::new(BTreeMapIndexTable::new_default(path)?),
+            IndexType::Auto => unreachable!(),
         };
 
         file.unlock()?;
         Ok(index_table)
     }
 
-    pub fn load(&self, path: PathBuf) -> Result<Box<dyn IndexTable>> {
+    pub fn load(&mut self, path: PathBuf) -> Result<Box<dyn IndexTable>> {
         let (path, type_path) = IndexFactory::path2path(path);
 
         let file = File::open(type_path)?;
@@ -79,6 +83,13 @@ impl IndexFactory {
         };
 
         if file_type != self.index_type {
+            if self.index_type == IndexType::Auto {
+                self.index_type = file_type;
+
+                // If the index type is Auto, then use the type in the file
+                return self.load(path);
+            }
+
             bail!("Index type in file does not match specified type");
         }
 
@@ -86,6 +97,7 @@ impl IndexFactory {
         let mut index_table: Box<dyn IndexTable> = match self.index_type {
             IndexType::HashMap => Box::new(HashMapIndexTable::new(path)?),
             IndexType::BTreeMap => Box::new(BTreeMapIndexTable::new(path)?),
+            IndexType::Auto => unreachable!(),
         };
 
         index_table.load()?;
@@ -93,7 +105,7 @@ impl IndexFactory {
         Ok(index_table)
     }
 
-    pub fn load_or_create(&self, path: PathBuf) -> Result<Box<dyn IndexTable>> {
+    pub fn load_or_create(&mut self, path: PathBuf) -> Result<Box<dyn IndexTable>> {
         let (_, type_path) = IndexFactory::path2path(path.clone());
 
         // Check if the file exists
@@ -138,7 +150,7 @@ mod tests {
         let index_path = temp_dir.path().join("index.bin");
 
         // Setup - create a HashMap index table
-        let index_factory = IndexFactory::new(IndexType::HashMap);
+        let mut index_factory = IndexFactory::new(IndexType::HashMap);
         index_factory.create(index_path.clone())?;
 
         // Test - load the HashMap index table

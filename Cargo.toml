@@ -1,6 +1,6 @@
 [package]
 name = "readb"
-version = "0.1.1"
+version = "0.2.0"
 edition = "2021"
 authors = ["Alexander Procelewski <alex@basishealth.io>"]
 description = "A simple, efficient, and modular embedded read-only key-value database in Rust."
