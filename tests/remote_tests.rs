@@ -1,53 +1,35 @@
-#[cfg(all(feature = "remote-cloning", feature = "index-write"))]
+#[cfg(all(feature = "remote-cloning", feature = "write"))]
 mod tests {
-    use readb::{
-        clone_from, new_index_table, DatabaseSettings, DefaultDatabase, IndexTable, IndexType,
-    };
-    use std::io::Write;
+    use readb::{clone_from, DatabaseSettings, DefaultDatabase, IndexType};
+    use std::fs;
     use std::path::PathBuf;
     use tokio::sync::OnceCell;
     use warp::Filter;
 
+    const RANDOM_STRINGS_WITH_KEYS: [(&str, &str); 6] = [
+        ("hi", "hello"),
+        ("there", "there"),
+        ("how", "are"),
+        ("you", "doing"),
+        ("today", "today"),
+        ("?", "?"),
+    ];
+
     static SERVER_STARTED: OnceCell<()> = OnceCell::const_new();
 
-    fn create_mock_files_at_location(dir: PathBuf) {
-        let path = dir.join("./.rdb.data");
-        let index_path = dir.join("./.rdb.index");
+    fn create_database(location: &PathBuf) {
+        let mut db = DefaultDatabase::new(DatabaseSettings {
+            path: Some(location.to_path_buf()),
+            cache_size: None,
+            index_type: IndexType::HashMap,
+        })
+        .unwrap();
 
-        {
-            let index_type_path = index_path.with_extension("type");
-            // write HashMap to type file
-            let mut file = std::fs::File::create(index_type_path).unwrap();
-            file.write_all(b"HashMap\n").unwrap();
+        for (_, (key, val)) in RANDOM_STRINGS_WITH_KEYS.iter().enumerate() {
+            db.put(key, val.as_bytes()).unwrap();
         }
 
-        let random_strings_with_keys = vec![
-            ("hi", "hello"),
-            ("there", "there"),
-            ("how", "are"),
-            ("you", "doing"),
-            ("today", "today"),
-            ("?", "?"),
-        ];
-
-        {
-            let mut index_table: Box<dyn IndexTable> =
-                new_index_table(index_path, IndexType::HashMap).unwrap();
-
-            for (i, (key, _)) in random_strings_with_keys.iter().enumerate() {
-                index_table.insert(key.to_string(), i).unwrap();
-            }
-            index_table.persist().unwrap();
-        }
-
-        {
-            // Create the data file, by storing the value in each line
-            let mut file = std::fs::File::create(path).unwrap();
-            for (_, value) in random_strings_with_keys.iter() {
-                file.write_all(value.as_bytes()).unwrap();
-                file.write_all(b"\n").unwrap();
-            }
-        }
+        db.persist().unwrap();
     }
 
     async fn start_mock_server(dir: PathBuf) {
@@ -57,6 +39,7 @@ mod tests {
                 let content = warp::path("content")
                     .and(warp::path::param::<String>())
                     .map(move |filetype: String| {
+                        println!("Reading file: {}", filetype);
                         let file_path = format!("{}/.rdb.{}", d.as_str(), filetype);
                         let content = std::fs::read_to_string(file_path).unwrap();
                         warp::http::Response::builder()
@@ -71,41 +54,43 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn remote_clone_test() {
+    async fn test_simple_read_after_creation() {
         let dir = tempfile::tempdir().unwrap();
-        let data_dir = dir.path().to_path_buf().join("data");
-        // Create dir
-        std::fs::create_dir_all(data_dir.clone()).unwrap();
+        let mock_dir = dir.path().join("./mock");
+        fs::create_dir(&mock_dir).unwrap();
 
-        create_mock_files_at_location(data_dir.clone());
-        start_mock_server(data_dir.clone()).await;
+        println!("Creating mock database");
+        create_database(&mock_dir);
 
-        let database_dir = dir
-            .path()
-            .to_path_buf()
-            .join("database")
-            .as_os_str()
-            .to_str()
-            .unwrap()
-            .to_string();
-        std::fs::create_dir_all(database_dir.clone()).unwrap();
+        println!("Starting mock server");
+        start_mock_server(mock_dir).await;
 
-        clone_from("http://localhost:3030/content", database_dir.as_str(), None)
-            .await
-            .unwrap();
+        println!("Mock server started");
 
-        // Now let's create the database
+        let database_dir = dir.path().join("./database");
+        fs::create_dir(&database_dir).unwrap();
+
+        println!(
+            "Cloning from http://localhost:3030/content to {}",
+            database_dir.as_os_str().to_str().unwrap()
+        );
+        clone_from(
+            "http://localhost:3030/content",
+            &database_dir.as_os_str().to_str().unwrap(),
+            None,
+        )
+        .await
+        .unwrap();
+
         let mut db = DefaultDatabase::new(DatabaseSettings {
-            path: Some(PathBuf::from(database_dir)),
+            path: Some(database_dir.to_path_buf()),
             cache_size: None,
             index_type: IndexType::HashMap,
         })
         .unwrap();
 
-        let existent_value = db.get("hi").unwrap();
-        assert_eq!(existent_value.unwrap(), "hello".to_string());
-
-        let non_existent_value = db.get("non-existent").unwrap();
-        assert!(non_existent_value.is_none());
+        for (key, value) in RANDOM_STRINGS_WITH_KEYS.iter() {
+            assert_eq!(db.get(key).unwrap().unwrap(), value.as_bytes());
+        }
     }
 }

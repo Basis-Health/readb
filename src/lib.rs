@@ -20,14 +20,6 @@
 //! - `delete`: Removes a key. Links and actual data remain unaffected.
 //! - `persist`: Saves new links to the database.
 //!
-//! ### `index-write` Feature:
-//! When the `index-write` feature is enabled, additional functionalities become available:
-//! - `new_index_table`: Initializes a new index table.
-//!     - `get`: Fetches the value tied to a key.
-//!     - `insert`: Adds a new key-value pair to the index table.
-//!     - `load`: Reads the index table from a specified path.
-//!     - `persist`: Commits the index table to a specified path.
-//!
 //! ### `remote-cloning` Feature:
 //! With the `remote-cloning` feature enabled:
 //! - `clone_from`: Copies the database from a remote address to a local directory.
@@ -47,11 +39,6 @@ mod database;
 
 pub use api::*;
 
-#[cfg(feature = "index-write")]
-mod index_api;
-#[cfg(feature = "index-write")]
-pub use index_api::*;
-#[cfg(feature = "index-write")]
 pub use index_table::IndexTable;
 
 #[cfg(feature = "remote-cloning")]

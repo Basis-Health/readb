@@ -1,7 +1,7 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use rand::seq::SliceRandom;
 use rand::SeedableRng;
-use readb::{new_index_table, DatabaseSettings, DefaultDatabase, IndexTable, IndexType};
+use readb::{DatabaseSettings, DefaultDatabase, IndexTable, IndexType};
 use redb::{Database, Error, ReadableTable, TableDefinition};
 use sled;
 use std::cmp::max;
@@ -21,26 +21,17 @@ fn benchmark_retrieval_from_db(c: &mut Criterion) {
         let mut group = c.benchmark_group(format!("Retrieve {} items", n));
 
         let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("index.bin");
-
-        // Insertion phase (not measured)
         {
-            let mut index_table: Box<dyn IndexTable> =
-                new_index_table(path.clone(), IndexType::HashMap).unwrap();
-            for (i, (key, _)) in data_copy.iter().enumerate() {
-                index_table.insert(key.clone(), i).unwrap();
+            let mut db = DefaultDatabase::new(DatabaseSettings {
+                path: Some(dir.path().to_path_buf()),
+                cache_size: None,
+                index_type: IndexType::HashMap,
+            })
+            .unwrap();
+
+            for (key, value) in data_copy.iter() {
+                db.put(key.as_str(), value.as_bytes()).unwrap();
             }
-            index_table.persist().unwrap();
-        }
-
-        {
-            // Create the data file, by storing the value in each line (not measured)
-            let content = data_copy
-                .iter()
-                .map(|(_, value)| value.clone())
-                .collect::<Vec<_>>()
-                .join("\n");
-            write(path, content).unwrap();
         }
 
         // Benchmark for your database system

@@ -1,15 +1,15 @@
 use crate::default_persist;
 use crate::index_table::IndexTable;
-use bincode::{deserialize_from, serialize_into};
+use bincode::deserialize_from;
 use fs2::FileExt;
 use std::collections::HashMap;
 use std::fs::{File, OpenOptions};
-use std::io::{BufReader, BufWriter};
+use std::io::BufReader;
 use std::path::PathBuf;
 
 #[repr(C)]
 pub struct HashMapIndexTable {
-    table: HashMap<String, usize>,
+    table: HashMap<String, (usize, usize)>,
     file_path: PathBuf,
 }
 
@@ -25,7 +25,7 @@ impl HashMapIndexTable {
         file.lock_exclusive()?;
 
         let reader = BufReader::new(&file);
-        let table: HashMap<String, usize> = match deserialize_from(reader) {
+        let table: HashMap<String, (usize, usize)> = match deserialize_from(reader) {
             Ok(table) => table,
             Err(_) => HashMap::new(),
         };
@@ -48,12 +48,12 @@ impl HashMapIndexTable {
 }
 
 impl IndexTable for HashMapIndexTable {
-    fn get(&self, key: &str) -> Option<&usize> {
-        self.table.get(key)
+    fn get(&self, key: &str) -> Option<(usize, usize)> {
+        self.table.get(key).copied()
     }
 
-    fn insert(&mut self, key: String, value: usize) -> anyhow::Result<()> {
-        self.table.insert(key.clone(), value);
+    fn insert(&mut self, key: &str, value: (usize, usize)) -> anyhow::Result<()> {
+        self.table.insert(key.to_string(), value);
         Ok(())
     }
 
@@ -85,11 +85,6 @@ impl IndexTable for HashMapIndexTable {
         Ok(())
     }
 
-    #[cfg(feature = "fuzzy-search")]
-    fn keys(&self) -> Vec<String> {
-        self.table.keys().cloned().collect()
-    }
-
     #[cfg(test)]
     fn index_type(&self) -> &str {
         "hash_map"
@@ -110,12 +105,12 @@ mod tests {
         let mut index_table = HashMapIndexTable::new(index_path.clone())?;
 
         // Test - insert an item
-        let key = "test".to_string();
-        let value = 123;
-        index_table.insert(key.clone(), value)?;
+        let key = "test";
+        let value = (123, 0);
+        index_table.insert(key, value)?;
 
         // Assert - get returns the correct value
-        assert_eq!(index_table.get(&key), Some(&value));
+        assert_eq!(index_table.get(&key), Some(value));
 
         // Test - persist to disk
         index_table.persist()?;
@@ -123,7 +118,7 @@ mod tests {
         // Assert - load from disk
         let mut loaded_table = HashMapIndexTable::new(index_path)?;
         loaded_table.load()?;
-        assert_eq!(loaded_table.get(&key), Some(&value));
+        assert_eq!(loaded_table.get(&key), Some(value));
 
         // Cleanup
         temp_dir.close()?;

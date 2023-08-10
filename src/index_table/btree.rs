@@ -1,15 +1,15 @@
 use crate::default_persist;
 use crate::index_table::IndexTable;
-use bincode::{deserialize_from, serialize_into};
+use bincode::deserialize_from;
 use fs2::FileExt;
 use std::collections::BTreeMap;
 use std::fs::{File, OpenOptions};
-use std::io::{BufReader, BufWriter};
+use std::io::BufReader;
 use std::path::PathBuf;
 
 #[repr(C)]
 pub struct BTreeMapIndexTable {
-    table: BTreeMap<String, usize>,
+    table: BTreeMap<String, (usize, usize)>,
     file_path: PathBuf,
 }
 
@@ -25,7 +25,7 @@ impl BTreeMapIndexTable {
         file.lock_exclusive()?;
 
         let reader = BufReader::new(&file);
-        let table: BTreeMap<String, usize> = match deserialize_from(reader) {
+        let table: BTreeMap<String, (usize, usize)> = match deserialize_from(reader) {
             Ok(table) => table,
             Err(_) => BTreeMap::new(),
         };
@@ -48,12 +48,12 @@ impl BTreeMapIndexTable {
 }
 
 impl IndexTable for BTreeMapIndexTable {
-    fn get(&self, key: &str) -> Option<&usize> {
-        self.table.get(key)
+    fn get(&self, key: &str) -> Option<(usize, usize)> {
+        self.table.get(key).copied()
     }
 
-    fn insert(&mut self, key: String, value: usize) -> anyhow::Result<()> {
-        self.table.insert(key, value);
+    fn insert(&mut self, key: &str, value: (usize, usize)) -> anyhow::Result<()> {
+        self.table.insert(key.to_string(), value);
         Ok(())
     }
 
@@ -85,11 +85,6 @@ impl IndexTable for BTreeMapIndexTable {
         Ok(())
     }
 
-    #[cfg(feature = "fuzzy-search")]
-    fn keys(&self) -> Vec<String> {
-        self.table.keys().cloned().collect()
-    }
-
     #[cfg(test)]
     fn index_type(&self) -> &str {
         "btree"
@@ -110,12 +105,12 @@ mod tests {
         let mut index_table = BTreeMapIndexTable::new(index_path.clone())?;
 
         // Test - insert an item
-        let key = "test".to_string();
+        let key = "test";
         let value = 123;
-        index_table.insert(key.clone(), value)?;
+        index_table.insert(key, (value, 0)).unwrap();
 
         // Assert - get returns the correct value
-        assert_eq!(index_table.get(&key), Some(&value));
+        assert_eq!(index_table.get(&key), Some((value, 0)));
 
         // Test - persist to disk
         index_table.persist()?;
@@ -123,7 +118,7 @@ mod tests {
         // Assert - load from disk
         let mut loaded_table = BTreeMapIndexTable::new(index_path)?;
         loaded_table.load()?;
-        assert_eq!(loaded_table.get(&key), Some(&value));
+        assert_eq!(loaded_table.get(&key), Some((value, 0)));
 
         // Cleanup
         temp_dir.close()?;

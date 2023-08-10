@@ -10,7 +10,7 @@ pub struct LazyFile {
     file: Option<File>,
 
     #[cfg(feature = "write")]
-    line_count: usize,
+    current_offset: usize,
 }
 
 impl LazyFile {
@@ -20,7 +20,7 @@ impl LazyFile {
             file: None,
 
             #[cfg(feature = "write")]
-            line_count: 0,
+            current_offset: 0,
         }
     }
 
@@ -43,7 +43,15 @@ impl LazyFile {
                     // Count the number of lines in the file
                     let file = self.file.as_mut().unwrap();
                     let reader = io::BufReader::new(file);
-                    self.line_count = reader.lines().count();
+
+                    // read the amount of bytes in the file
+                    let mut bytes = 0;
+                    for line in reader.lines() {
+                        bytes += line.unwrap().len() + 1;
+                    }
+                    bytes -= 1; // remove last newline
+
+                    self.current_offset = bytes;
                 } else {
                     self.file = Some(File::create(&self.path)?);
                 }
@@ -52,36 +60,32 @@ impl LazyFile {
         Ok(())
     }
 
-    pub fn get_line(&mut self, line_number: usize) -> io::Result<String> {
+    pub fn read(&mut self, offset: usize, len: usize) -> anyhow::Result<Vec<u8>> {
         self.open_file()?;
 
         let file = self.file.as_mut().unwrap();
 
-        file.seek(SeekFrom::Start(0))?;
-        let reader = io::BufReader::new(file);
+        file.seek(SeekFrom::Start(offset as u64))?;
 
-        let r = reader.lines().nth(line_number);
-        match r {
-            Some(Ok(line)) => Ok(line),
-            Some(Err(e)) => Err(e),
-            None => Err(io::Error::new(io::ErrorKind::Other, "Line not found")),
-        }
+        let mut reader = io::BufReader::new(file);
+        let mut buf = vec![0; len];
+        reader.read_exact(&mut buf)?;
+
+        Ok(buf)
     }
 
     #[cfg(feature = "write")]
-    pub(crate) fn add(&mut self, line: &str) -> anyhow::Result<usize> {
+    pub(crate) fn add(&mut self, data: &[u8]) -> anyhow::Result<(usize, usize)> {
         self.open_file()?;
 
         let file = self.file.as_mut().unwrap();
 
-        file.seek(SeekFrom::End(0))?;
-        let mut writer = io::BufWriter::new(file);
+        file.seek(SeekFrom::Start(self.current_offset as u64))?;
+        file.write_all(data)?;
 
-        writer.write_all(line.as_bytes())?;
-        writer.write_all(b"\n")?;
+        self.current_offset += data.len();
 
-        self.line_count += 1;
-        Ok(self.line_count - 1)
+        Ok((self.current_offset - data.len(), data.len()))
     }
 
     #[cfg(feature = "write")]
@@ -92,5 +96,10 @@ impl LazyFile {
 
         file.sync_all()?;
         Ok(())
+    }
+
+    #[cfg(feature = "write")]
+    pub(crate) fn current_offset(&self) -> usize {
+        self.current_offset
     }
 }

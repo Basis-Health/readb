@@ -18,11 +18,11 @@ jobs:
           - nightly
         include:
           - rust: stable
-            features: index-write
+            features: write
           - rust: beta
-            features: index-write
+            features: write
           - rust: nightly
-            features: index-write
+            features: write
           - rust: stable
             features: default-remote
 

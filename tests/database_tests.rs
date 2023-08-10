@@ -1,51 +1,23 @@
-#[cfg(feature = "index-write")]
+#[cfg(feature = "write")]
 mod tests {
-    use rand::{Rng, SeedableRng};
-    use readb::{new_index_table, DatabaseSettings, DefaultDatabase, IndexTable, IndexType};
-    use std::io::Write;
+    use readb::{DatabaseSettings, DefaultDatabase, IndexType};
 
     #[test]
-    fn create_index_table_and_then_retrieve_from_db() {
+    fn test_simple_read_after_creation() {
         let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("./.rdb.data");
-        let index_path = dir.path().join("./.rdb.index");
-
         {
-            let index_type_path = index_path.with_extension("type");
-            // write HashMap to type file
-            let mut file = std::fs::File::create(index_type_path).unwrap();
-            file.write_all(b"HashMap\n").unwrap();
+            let mut db = DefaultDatabase::new(DatabaseSettings {
+                path: Some(dir.path().to_path_buf()),
+                cache_size: None,
+                index_type: IndexType::HashMap,
+            })
+            .unwrap();
+
+            db.put("key", "value".as_bytes()).unwrap();
+            db.put("another_key", "another_value".as_bytes()).unwrap();
+            db.persist().unwrap();
         }
 
-        let random_strings_with_keys = vec![
-            ("hi", "hello"),
-            ("there", "there"),
-            ("how", "are"),
-            ("you", "doing"),
-            ("today", "today"),
-            ("?", "?"),
-        ];
-
-        {
-            let mut index_table: Box<dyn IndexTable> =
-                new_index_table(index_path, IndexType::HashMap).unwrap();
-
-            for (i, (key, _)) in random_strings_with_keys.iter().enumerate() {
-                index_table.insert(key.to_string(), i).unwrap();
-            }
-            index_table.persist().unwrap();
-        }
-
-        {
-            // Create the data file, by storing the value in each line
-            let mut file = std::fs::File::create(path).unwrap();
-            for (_, value) in random_strings_with_keys.iter() {
-                file.write_all(value.as_bytes()).unwrap();
-                file.write_all(b"\n").unwrap();
-            }
-        }
-
-        // Now let's create the database
         let mut db = DefaultDatabase::new(DatabaseSettings {
             path: Some(dir.path().to_path_buf()),
             cache_size: None,
@@ -53,122 +25,170 @@ mod tests {
         })
         .unwrap();
 
-        // And let's retrieve some data
-        for (key, expected_value) in random_strings_with_keys.iter() {
-            let value = db.get(key).unwrap();
-            assert!(value.is_some());
-            assert_eq!(value.unwrap(), *expected_value);
-        }
-
-        let non_existent_value = db.get("non-existent").unwrap();
-        assert!(non_existent_value.is_none());
-
-        // Create link
-        db.link("you", "new-link").unwrap();
-        let value = db.get("new-link").unwrap();
-        assert!(value.is_some());
-        assert_eq!(value.unwrap(), "doing");
+        assert_eq!(db.get("key").unwrap().unwrap(), "value".as_bytes());
+        assert!(db.get("another_key").unwrap().is_some());
+        assert!(db.get("non_existent_key").unwrap().is_none());
     }
 
-    fn n_threads_accessing_at_the_same_time_test(n: usize, thread_count: usize) {
-        // seed is 16807
-        let mut rng = rand::rngs::StdRng::seed_from_u64(16807);
+    #[test]
+    fn test_linking_data() {
+        let dir = tempfile::tempdir().unwrap();
+        {
+            let mut db = DefaultDatabase::new(DatabaseSettings {
+                path: Some(dir.path().to_path_buf()),
+                cache_size: None,
+                index_type: IndexType::HashMap,
+            })
+            .unwrap();
+
+            db.put("key", "value".as_bytes()).unwrap();
+            db.put("another_key", "another_value".as_bytes()).unwrap();
+            db.persist().unwrap();
+        }
+
+        let mut db = DefaultDatabase::new(DatabaseSettings {
+            path: Some(dir.path().to_path_buf()),
+            cache_size: None,
+            index_type: IndexType::HashMap,
+        })
+        .unwrap();
+
+        // Easy test
+        db.link("key", "lined_key").unwrap();
+        assert_eq!(db.get("lined_key").unwrap().unwrap(), "value".as_bytes());
+
+        // Overriding test
+        db.link("another_key", "linked_key").unwrap();
+        assert_eq!(
+            db.get("linked_key").unwrap().unwrap(),
+            "another_value".as_bytes()
+        );
+
+        // Override existing key
+        db.link("linked_key", "key").unwrap();
+        assert_eq!(db.get("key").unwrap().unwrap(), "another_value".as_bytes());
+
+        // Now link to a non-existent key, check that it was unsuccessful
+        assert!(db.link("non_existent_key", "key").is_err());
+        assert_eq!(db.get("key").unwrap().unwrap(), "another_value".as_bytes());
+    }
+
+    #[test]
+    fn test_binary_data() {
+        let some_dummy_string = "hello world";
+        let encoded = bincode::serialize(&some_dummy_string).unwrap();
+
+        let some_other_dummy_string = "hello world 2";
+        let encoded2 = bincode::serialize(&some_other_dummy_string).unwrap();
 
         let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("./.rdb.data");
-        let index_path = dir.path().join("./.rdb.index");
-
         {
-            let index_type_path = index_path.with_extension("type");
-            // write HashMap to type file
-            let mut file = std::fs::File::create(index_type_path).unwrap();
-            file.write_all(b"HashMap\n").unwrap();
+            let mut db = DefaultDatabase::new(DatabaseSettings {
+                path: Some(dir.path().to_path_buf()),
+                cache_size: None,
+                index_type: IndexType::HashMap,
+            })
+            .unwrap();
+
+            db.put("key", &encoded).unwrap();
+            db.put("another_key", &encoded2).unwrap();
+            db.persist().unwrap();
         }
 
-        let random_key_values = (0..n)
-            .map(|i| (format!("key{}", i), format!("value{}", i)))
+        let mut db = DefaultDatabase::new(DatabaseSettings {
+            path: Some(dir.path().to_path_buf()),
+            cache_size: None,
+            index_type: IndexType::HashMap,
+        })
+        .unwrap();
+
+        assert_eq!(db.get("key").unwrap().unwrap(), encoded);
+        assert_eq!(db.get("another_key").unwrap().unwrap(), encoded2);
+    }
+
+    #[test]
+    fn force_fragmentation_test() {
+        let dir = tempfile::tempdir().unwrap();
+        {
+            let mut db = DefaultDatabase::new(DatabaseSettings {
+                path: Some(dir.path().to_path_buf()),
+                cache_size: None,
+                index_type: IndexType::HashMap,
+            })
+            .unwrap();
+
+            for i in 0..10000 {
+                db.put(
+                    format!("key{}", i).as_str(),
+                    format!("value{}", i).as_bytes(),
+                )
+                .unwrap();
+            }
+
+            db.persist().unwrap();
+        }
+
+        let mut db = DefaultDatabase::new(DatabaseSettings {
+            path: Some(dir.path().to_path_buf()),
+            cache_size: None,
+            index_type: IndexType::HashMap,
+        })
+        .unwrap();
+
+        assert_eq!(db.get("key0").unwrap().unwrap(), "value0".as_bytes());
+        assert_eq!(db.get("key4242").unwrap().unwrap(), "value4242".as_bytes());
+        assert_eq!(db.get("key9998").unwrap().unwrap(), "value9998".as_bytes());
+        assert_eq!(db.get("key9999").unwrap().unwrap(), "value9999".as_bytes());
+    }
+
+    #[test]
+    fn test_multithreaded_read() {
+        let dir = tempfile::tempdir().unwrap();
+        {
+            let mut db = DefaultDatabase::new(DatabaseSettings {
+                path: Some(dir.path().to_path_buf()),
+                cache_size: None,
+                index_type: IndexType::HashMap,
+            })
+            .unwrap();
+
+            for i in 0..10000 {
+                db.put(
+                    format!("key{}", i).as_str(),
+                    format!("value{}", i).as_bytes(),
+                )
+                .unwrap();
+            }
+            db.persist().unwrap();
+        }
+
+        let num_threads = 10;
+        let barrier = std::sync::Arc::new(std::sync::Barrier::new(num_threads));
+
+        let join_handles = (0..num_threads)
+            .map(|_| {
+                let barrier = barrier.clone();
+                let dir = dir.path().to_path_buf();
+                std::thread::spawn(move || {
+                    let mut db = DefaultDatabase::new(DatabaseSettings {
+                        path: Some(dir),
+                        cache_size: None,
+                        index_type: IndexType::HashMap,
+                    })
+                    .unwrap();
+                    barrier.wait();
+
+                    for i in 0..10000 {
+                        let key = format!("key{}", i);
+                        let value = format!("value{}", i);
+                        assert_eq!(db.get(key.as_str()).unwrap().unwrap(), value.as_bytes());
+                    }
+                })
+            })
             .collect::<Vec<_>>();
 
-        {
-            let mut index_table: Box<dyn IndexTable> =
-                new_index_table(index_path.clone(), IndexType::HashMap).unwrap();
-
-            for (i, (key, _)) in random_key_values.iter().enumerate() {
-                index_table.insert(key.to_string(), i).unwrap();
-            }
-            index_table.persist().unwrap();
+        for handle in join_handles {
+            handle.join().unwrap();
         }
-
-        {
-            // Create the data file, by storing the value in each line
-            let mut file = std::fs::File::create(path.clone()).unwrap();
-            for (_, value) in random_key_values.iter() {
-                file.write_all(value.as_bytes()).unwrap();
-                file.write_all(b"\n").unwrap();
-            }
-        }
-
-        // all threads should access approximately 10% of the keys
-        let mut keys_to_access_by_thread: Vec<Vec<String>> = Vec::new();
-        for _ in 0..thread_count {
-            let mut keys_to_access = Vec::new();
-            for _ in 0..n / 10 {
-                let index = rng.gen_range(0..n);
-                keys_to_access.push(random_key_values[index].0.clone());
-            }
-            keys_to_access_by_thread.push(keys_to_access);
-        }
-
-        // Create the 16 threads
-        // each thread should take its keys from the keys_to_access_by_thread vector
-        // and then access the database
-        // there should be a barrier so that each thread constructed the database before accessing it
-        let mut threads = Vec::new();
-        let barrier = std::sync::Arc::new(std::sync::Barrier::new(thread_count));
-
-        for keys_to_access in keys_to_access_by_thread {
-            let dir = dir.path().to_path_buf();
-            let c = barrier.clone();
-            threads.push(std::thread::spawn(move || {
-                let mut db = DefaultDatabase::new(DatabaseSettings {
-                    path: Some(dir),
-                    cache_size: None,
-                    index_type: IndexType::HashMap,
-                })
-                .unwrap();
-
-                // barrier
-                c.wait();
-
-                for key in keys_to_access {
-                    let value = db.get(&key).unwrap();
-                    assert!(value.is_some());
-                    assert_eq!(
-                        value.unwrap(),
-                        format!("value{}", key[3..].parse::<usize>().unwrap())
-                    );
-                }
-            }));
-        }
-
-        for thread in threads {
-            thread.join().unwrap();
-        }
-    }
-
-    #[test]
-    fn two_threads_accessing_at_the_same_time_test() {
-        let n = 1000;
-        let threads = 2;
-
-        n_threads_accessing_at_the_same_time_test(n, threads);
-    }
-
-    #[test]
-    fn sixteen_threads_accessing_at_the_same_time_test() {
-        let n = 10000;
-        let threads = 16;
-
-        n_threads_accessing_at_the_same_time_test(n, threads);
     }
 }

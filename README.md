@@ -29,14 +29,6 @@ app, or being dependent on the file system.
 - **delete**: Delete a key, does not delete any links or actual data
 - **persist**: Persist the new links to the database
 
-### index-write feature
-
-- **new_index_table**: Create a new index table
-  - get: Get the value associated with a key.
-  - insert: Insert a new key-value pair into the index table
-  - load: Load the index table from the path
-  - persist: Persist the index table to the path
-
 ### remote-cloning feature
 - **clone_from(address, path, compression)**
   - Clone the database from a remote address to a local path
@@ -45,12 +37,11 @@ app, or being dependent on the file system.
 ### write feature
 The write feature should only be used for building the database. It is not recommended to use it in production as it
 is not tested and is not optimized for performance. There are two additional functions:
-- **insert**: Insert a new key-value pair into the database
+- **put**: Insert a new key-value pair into the database
 - **persist**: Persist the database to the disk
 
-Note that insert and persist are not thread safe and should not be used concurrently. Furthermore, you cannot use the
-get function after inserting a new key-value pair until you persist the database. Consider using the index-write feature
-if you just want to add new keys to the database.
+Note that put and persist are not thread safe and should not be used concurrently. Furthermore, you cannot use the
+get function after inserting a new key-value pair until you persist the database. 
 
 ## Getting Started
 
@@ -135,6 +126,9 @@ If you don't know your index type, you can use `IndexType::Auto` to automaticall
 is not supported for creating/writing to the database.
 
 ## Benchmarks
+
+TODO: Re-run the benchmarks with the updates
+
 There are three benchmarks:
 - Regular: Access each key once
 - 10%: Access 10% of the keys

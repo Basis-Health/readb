@@ -1,4 +1,4 @@
-use crate::cache::Cache;
+use crate::cache::{Cache, Key, Value};
 use std::cmp::Reverse;
 use std::collections::{hash_map::Entry, BinaryHeap, HashMap};
 
@@ -6,8 +6,8 @@ const DEFAULT_CAPACITY: usize = 1024;
 
 pub struct LfuCache {
     capacity: usize,
-    map: HashMap<usize, (String, usize)>, // key to (value, frequency)
-    frequencies: BinaryHeap<Reverse<(usize, usize)>>, // Reverse heap of (frequency, key)
+    map: HashMap<Key, (Value, usize)>, // key to (value, frequency)
+    frequencies: BinaryHeap<Reverse<(usize, Key)>>, // Reverse heap of (frequency, key)
 }
 
 impl LfuCache {
@@ -29,7 +29,7 @@ impl Cache for LfuCache {
         Self::new(DEFAULT_CAPACITY)
     }
 
-    fn get(&mut self, key: &usize) -> Option<String> {
+    fn get(&mut self, key: &Key) -> Option<Value> {
         match self.map.get_mut(key) {
             Some((value, frequency)) => {
                 *frequency += 1;
@@ -40,7 +40,7 @@ impl Cache for LfuCache {
         }
     }
 
-    fn put(&mut self, key: usize, value: String) {
+    fn put(&mut self, key: Key, value: Value) {
         if self.map.len() == self.capacity {
             while let Some(Reverse((_, evicted_key))) = self.frequencies.pop() {
                 if let Entry::Occupied(e) = self.map.entry(evicted_key) {
@@ -73,33 +73,45 @@ mod tests {
     #[test]
     fn put_get_elements() {
         let mut cache = LfuCache::new(2);
-        cache.put(1, "a".to_string());
-        cache.put(2, "b".to_string());
+        cache.put((1, 0), "a".to_string().as_bytes().to_vec());
+        cache.put((2, 0), "b".to_string().as_bytes().to_vec());
 
-        assert_eq!(cache.get(&1), Some("a".to_string()));
-        assert_eq!(cache.get(&2), Some("b".to_string()));
+        assert_eq!(
+            cache.get(&(1, 0)),
+            Some("a".to_string().as_bytes().to_vec())
+        );
+        assert_eq!(
+            cache.get(&(2, 0)),
+            Some("b".to_string().as_bytes().to_vec())
+        );
     }
 
     #[test]
     fn evict_least_frequent() {
         let mut cache = LfuCache::new(2);
-        cache.put(1, "a".to_string());
-        cache.put(2, "b".to_string());
-        cache.get(&1);
-        cache.put(3, "c".to_string());
+        cache.put((1, 0), "a".to_string().as_bytes().to_vec());
+        cache.put((2, 0), "b".to_string().as_bytes().to_vec());
+        cache.get(&(1, 0));
+        cache.put((3, 0), "c".to_string().as_bytes().to_vec());
 
-        assert_eq!(cache.get(&1), Some("a".to_string()));
-        assert_eq!(cache.get(&2), None);
-        assert_eq!(cache.get(&3), Some("c".to_string()));
+        assert_eq!(
+            cache.get(&(1, 0)),
+            Some("a".to_string().as_bytes().to_vec())
+        );
+        assert_eq!(cache.get(&(2, 0)), None);
+        assert_eq!(
+            cache.get(&(3, 0)),
+            Some("c".to_string().as_bytes().to_vec())
+        );
     }
 
     #[test]
     fn increment_frequency() {
         let mut cache = LfuCache::new(2);
-        cache.put(1, "a".to_string());
-        cache.get(&1);
-        cache.get(&1);
+        cache.put((1, 0), "a".to_string().as_bytes().to_vec());
+        cache.get(&(1, 0));
+        cache.get(&(1, 0));
 
-        assert_eq!(cache.map.get(&1).unwrap().1, 3);
+        assert_eq!(cache.map.get(&(1, 0)).unwrap().1, 3);
     }
 }
