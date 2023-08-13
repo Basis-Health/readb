@@ -1,6 +1,6 @@
 [package]
 name = "readb"
-version = "0.2.1"
+version = "0.3.0"
 edition = "2021"
 authors = ["Alexander Procelewski <alex@basishealth.io>"]
 description = "A simple, efficient, and modular embedded read-only key-value database in Rust."
@@ -24,18 +24,23 @@ sled = {version = "0.34.7" }
 redb = "1.0.5"
 warp = "0.3.5"
 rand = "0.8.5"
+walkdir = "2"
+#
+#[[bench]]
+#name = "rdb_vs_sled"
+#harness = false
 
 [[bench]]
-name = "rdb_vs_sled"
+name = "write_benchmark"
 harness = false
 
 [features]
 default = []
-index-write = []
 ignore-path-check = []
 
 default-remote = ["remote-cloning", "remote-brotli-compression"]
 remote-cloning = ["reqwest"]
 remote-brotli-compression = ["brotli"]
 
-write = ["index-write"]
+write = []
+garbage-collection = []

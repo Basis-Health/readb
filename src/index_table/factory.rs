@@ -79,7 +79,7 @@ impl IndexFactory {
         let file_type = match first_line.trim() {
             "HashMap" => IndexType::HashMap,
             "BTreeMap" => IndexType::BTreeMap,
-            _ => bail!("Unknown index type in file"),
+            _ => bail!("Unknown index type {} in file", first_line),
         };
 
         if file_type != self.index_type {

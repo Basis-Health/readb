@@ -1,51 +1,27 @@
-#[cfg(feature = "index-write")]
+#[cfg(feature = "write")]
 mod tests {
-    use rand::{Rng, SeedableRng};
-    use readb::{new_index_table, DatabaseSettings, DefaultDatabase, IndexTable, IndexType};
-    use std::io::Write;
+    use rand::Rng;
+
+    use readb::{DatabaseSettings, DefaultDatabase, IndexType};
+    #[cfg(feature = "garbage-collection")]
+    use walkdir::WalkDir;
 
     #[test]
-    fn create_index_table_and_then_retrieve_from_db() {
+    fn test_simple_read_after_creation() {
         let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("./.rdb.data");
-        let index_path = dir.path().join("./.rdb.index");
-
         {
-            let index_type_path = index_path.with_extension("type");
-            // write HashMap to type file
-            let mut file = std::fs::File::create(index_type_path).unwrap();
-            file.write_all(b"HashMap\n").unwrap();
+            let mut db = DefaultDatabase::new(DatabaseSettings {
+                path: Some(dir.path().to_path_buf()),
+                cache_size: None,
+                index_type: IndexType::HashMap,
+            })
+            .unwrap();
+
+            db.put("key", "value".as_bytes()).unwrap();
+            db.put("another_key", "another_value".as_bytes()).unwrap();
+            db.persist().unwrap();
         }
 
-        let random_strings_with_keys = vec![
-            ("hi", "hello"),
-            ("there", "there"),
-            ("how", "are"),
-            ("you", "doing"),
-            ("today", "today"),
-            ("?", "?"),
-        ];
-
-        {
-            let mut index_table: Box<dyn IndexTable> =
-                new_index_table(index_path, IndexType::HashMap).unwrap();
-
-            for (i, (key, _)) in random_strings_with_keys.iter().enumerate() {
-                index_table.insert(key.to_string(), i).unwrap();
-            }
-            index_table.persist().unwrap();
-        }
-
-        {
-            // Create the data file, by storing the value in each line
-            let mut file = std::fs::File::create(path).unwrap();
-            for (_, value) in random_strings_with_keys.iter() {
-                file.write_all(value.as_bytes()).unwrap();
-                file.write_all(b"\n").unwrap();
-            }
-        }
-
-        // Now let's create the database
         let mut db = DefaultDatabase::new(DatabaseSettings {
             path: Some(dir.path().to_path_buf()),
             cache_size: None,
@@ -53,122 +29,312 @@ mod tests {
         })
         .unwrap();
 
-        // And let's retrieve some data
-        for (key, expected_value) in random_strings_with_keys.iter() {
-            let value = db.get(key).unwrap();
-            assert!(value.is_some());
-            assert_eq!(value.unwrap(), *expected_value);
-        }
-
-        let non_existent_value = db.get("non-existent").unwrap();
-        assert!(non_existent_value.is_none());
-
-        // Create link
-        db.link("you", "new-link").unwrap();
-        let value = db.get("new-link").unwrap();
-        assert!(value.is_some());
-        assert_eq!(value.unwrap(), "doing");
+        assert_eq!(db.get("key").unwrap().unwrap(), "value".as_bytes());
+        assert!(db.get("another_key").unwrap().is_some());
+        assert!(db.get("non_existent_key").unwrap().is_none());
     }
 
-    fn n_threads_accessing_at_the_same_time_test(n: usize, thread_count: usize) {
-        // seed is 16807
-        let mut rng = rand::rngs::StdRng::seed_from_u64(16807);
+    #[test]
+    fn test_linking_data() {
+        let dir = tempfile::tempdir().unwrap();
+        {
+            let mut db = DefaultDatabase::new(DatabaseSettings {
+                path: Some(dir.path().to_path_buf()),
+                cache_size: None,
+                index_type: IndexType::HashMap,
+            })
+            .unwrap();
+
+            db.put("key", "value".as_bytes()).unwrap();
+            db.put("another_key", "another_value".as_bytes()).unwrap();
+            db.persist().unwrap();
+        }
+
+        let mut db = DefaultDatabase::new(DatabaseSettings {
+            path: Some(dir.path().to_path_buf()),
+            cache_size: None,
+            index_type: IndexType::HashMap,
+        })
+        .unwrap();
+
+        // Easy test
+        db.link("key", "lined_key").unwrap();
+        assert_eq!(db.get("lined_key").unwrap().unwrap(), "value".as_bytes());
+
+        // Overriding test
+        db.link("another_key", "linked_key").unwrap();
+        assert_eq!(
+            db.get("linked_key").unwrap().unwrap(),
+            "another_value".as_bytes()
+        );
+
+        // Override existing key
+        db.link("linked_key", "key").unwrap();
+        assert_eq!(db.get("key").unwrap().unwrap(), "another_value".as_bytes());
+
+        // Now link to a non-existent key, check that it was unsuccessful
+        assert!(db.link("non_existent_key", "key").is_err());
+        assert_eq!(db.get("key").unwrap().unwrap(), "another_value".as_bytes());
+    }
+
+    #[test]
+    fn test_binary_data() {
+        let some_dummy_string = "hello world";
+        let encoded = bincode::serialize(&some_dummy_string).unwrap();
+
+        let some_other_dummy_string = "hello world 2";
+        let encoded2 = bincode::serialize(&some_other_dummy_string).unwrap();
 
         let dir = tempfile::tempdir().unwrap();
-        let path = dir.path().join("./.rdb.data");
-        let index_path = dir.path().join("./.rdb.index");
-
         {
-            let index_type_path = index_path.with_extension("type");
-            // write HashMap to type file
-            let mut file = std::fs::File::create(index_type_path).unwrap();
-            file.write_all(b"HashMap\n").unwrap();
+            let mut db = DefaultDatabase::new(DatabaseSettings {
+                path: Some(dir.path().to_path_buf()),
+                cache_size: None,
+                index_type: IndexType::HashMap,
+            })
+            .unwrap();
+
+            db.put("key", &encoded).unwrap();
+            db.put("another_key", &encoded2).unwrap();
+            db.persist().unwrap();
         }
 
-        let random_key_values = (0..n)
-            .map(|i| (format!("key{}", i), format!("value{}", i)))
+        let mut db = DefaultDatabase::new(DatabaseSettings {
+            path: Some(dir.path().to_path_buf()),
+            cache_size: None,
+            index_type: IndexType::HashMap,
+        })
+        .unwrap();
+
+        assert_eq!(db.get("key").unwrap().unwrap(), encoded);
+        assert_eq!(db.get("another_key").unwrap().unwrap(), encoded2);
+    }
+
+    #[test]
+    fn force_fragmentation_test() {
+        let dir = tempfile::tempdir().unwrap();
+        {
+            let mut db = DefaultDatabase::new(DatabaseSettings {
+                path: Some(dir.path().to_path_buf()),
+                cache_size: None,
+                index_type: IndexType::HashMap,
+            })
+            .unwrap();
+
+            for i in 0..10000 {
+                db.put(
+                    format!("key{}", i).as_str(),
+                    format!("value{}", i).as_bytes(),
+                )
+                .unwrap();
+            }
+
+            db.persist().unwrap();
+        }
+
+        let mut db = DefaultDatabase::new(DatabaseSettings {
+            path: Some(dir.path().to_path_buf()),
+            cache_size: None,
+            index_type: IndexType::HashMap,
+        })
+        .unwrap();
+
+        assert_eq!(db.get("key0").unwrap().unwrap(), "value0".as_bytes());
+        assert_eq!(db.get("key4242").unwrap().unwrap(), "value4242".as_bytes());
+        assert_eq!(db.get("key9998").unwrap().unwrap(), "value9998".as_bytes());
+        assert_eq!(db.get("key9999").unwrap().unwrap(), "value9999".as_bytes());
+    }
+
+    #[test]
+    fn test_multithreaded_read() {
+        let dir = tempfile::tempdir().unwrap();
+        {
+            let mut db = DefaultDatabase::new(DatabaseSettings {
+                path: Some(dir.path().to_path_buf()),
+                cache_size: None,
+                index_type: IndexType::HashMap,
+            })
+            .unwrap();
+
+            for i in 0..10000 {
+                db.put(
+                    format!("key{}", i).as_str(),
+                    format!("value{}", i).as_bytes(),
+                )
+                .unwrap();
+            }
+            db.persist().unwrap();
+        }
+
+        let num_threads = 10;
+        let barrier = std::sync::Arc::new(std::sync::Barrier::new(num_threads));
+
+        let join_handles = (0..num_threads)
+            .map(|_| {
+                let barrier = barrier.clone();
+                let dir = dir.path().to_path_buf();
+                std::thread::spawn(move || {
+                    let mut db = DefaultDatabase::new(DatabaseSettings {
+                        path: Some(dir),
+                        cache_size: None,
+                        index_type: IndexType::HashMap,
+                    })
+                    .unwrap();
+                    barrier.wait();
+
+                    for i in 0..10000 {
+                        let key = format!("key{}", i);
+                        let value = format!("value{}", i);
+                        assert_eq!(db.get(key.as_str()).unwrap().unwrap(), value.as_bytes());
+                    }
+                })
+            })
             .collect::<Vec<_>>();
 
-        {
-            let mut index_table: Box<dyn IndexTable> =
-                new_index_table(index_path.clone(), IndexType::HashMap).unwrap();
-
-            for (i, (key, _)) in random_key_values.iter().enumerate() {
-                index_table.insert(key.to_string(), i).unwrap();
-            }
-            index_table.persist().unwrap();
-        }
-
-        {
-            // Create the data file, by storing the value in each line
-            let mut file = std::fs::File::create(path.clone()).unwrap();
-            for (_, value) in random_key_values.iter() {
-                file.write_all(value.as_bytes()).unwrap();
-                file.write_all(b"\n").unwrap();
-            }
-        }
-
-        // all threads should access approximately 10% of the keys
-        let mut keys_to_access_by_thread: Vec<Vec<String>> = Vec::new();
-        for _ in 0..thread_count {
-            let mut keys_to_access = Vec::new();
-            for _ in 0..n / 10 {
-                let index = rng.gen_range(0..n);
-                keys_to_access.push(random_key_values[index].0.clone());
-            }
-            keys_to_access_by_thread.push(keys_to_access);
-        }
-
-        // Create the 16 threads
-        // each thread should take its keys from the keys_to_access_by_thread vector
-        // and then access the database
-        // there should be a barrier so that each thread constructed the database before accessing it
-        let mut threads = Vec::new();
-        let barrier = std::sync::Arc::new(std::sync::Barrier::new(thread_count));
-
-        for keys_to_access in keys_to_access_by_thread {
-            let dir = dir.path().to_path_buf();
-            let c = barrier.clone();
-            threads.push(std::thread::spawn(move || {
-                let mut db = DefaultDatabase::new(DatabaseSettings {
-                    path: Some(dir),
-                    cache_size: None,
-                    index_type: IndexType::HashMap,
-                })
-                .unwrap();
-
-                // barrier
-                c.wait();
-
-                for key in keys_to_access {
-                    let value = db.get(&key).unwrap();
-                    assert!(value.is_some());
-                    assert_eq!(
-                        value.unwrap(),
-                        format!("value{}", key[3..].parse::<usize>().unwrap())
-                    );
-                }
-            }));
-        }
-
-        for thread in threads {
-            thread.join().unwrap();
+        for handle in join_handles {
+            handle.join().unwrap();
         }
     }
 
     #[test]
-    fn two_threads_accessing_at_the_same_time_test() {
-        let n = 1000;
-        let threads = 2;
+    fn tests_around_buffering() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let mut db = DefaultDatabase::new(DatabaseSettings {
+            path: Some(temp_dir.path().to_path_buf()),
+            cache_size: None,
+            index_type: IndexType::HashMap,
+        })
+        .unwrap();
 
-        n_threads_accessing_at_the_same_time_test(n, threads);
+        // Case 1: Load all data into buffer, so store < 4096 bytes
+        println!("Case 1");
+        for i in 0..10 {
+            let key = format!("key{}", i);
+            let value = format!("value{}", i); // 6-7 bytes
+            db.put(key.as_str(), value.as_bytes()).unwrap();
+        }
+
+        for i in 0..10 {
+            let key = format!("key{}", i);
+            let value = format!("value{}", i); // 6-7 bytes
+            assert_eq!(db.get(key.as_str()).unwrap().unwrap(), value.as_bytes());
+        }
+
+        println!("Case 1 done");
+
+        // clear buffer
+        db.persist().unwrap();
+
+        // Case 2: Store 2 objects with 4000 bytes each, then retrieve them both
+        println!("Case 2");
+        let mut big_value = Vec::new();
+        for _ in 0..4000 {
+            big_value.push(1);
+        }
+
+        db.put("key1", &big_value).unwrap();
+        db.put("key2", &big_value).unwrap();
+
+        assert_eq!(db.get("key1").unwrap().unwrap(), big_value.as_slice());
+        assert_eq!(db.get("key2").unwrap().unwrap(), big_value.as_slice());
+
+        println!("Case 2 done");
+        db.persist().unwrap();
+
+        // Case 3: Store object larger than 4096 bytes, then retrieve it
+        println!("Case 3");
+        let mut big_value = Vec::new();
+        for _ in 0..5000 {
+            big_value.push(0);
+        }
+
+        db.put("key3", &big_value).unwrap();
+        assert_eq!(db.get("key3").unwrap().unwrap(), big_value.as_slice());
+
+        println!("Case 3 done");
     }
 
     #[test]
-    fn sixteen_threads_accessing_at_the_same_time_test() {
-        let n = 10000;
-        let threads = 16;
+    fn lots_of_write_and_reads() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let mut db = DefaultDatabase::new(DatabaseSettings {
+            path: Some(temp_dir.path().to_path_buf()),
+            cache_size: None,
+            index_type: IndexType::HashMap,
+        })
+        .unwrap();
 
-        n_threads_accessing_at_the_same_time_test(n, threads);
+        let mut rng = rand::thread_rng();
+        let mut keys: Vec<String> = Vec::new();
+        let mut values: Vec<String> = Vec::new();
+
+        let mut c = 0;
+        for i in 0..100_000 {
+            if i > 10 && rng.gen_bool(0.4) {
+                let index = rng.gen_range(0..c);
+                let data = db.get(keys[index].as_str()).unwrap().unwrap();
+                assert_eq!(data, values[index].as_bytes());
+            } else {
+                let key = format!("key{}", i);
+                let value = format!("value{}", i);
+                db.put(key.as_str(), value.as_bytes()).unwrap();
+                c += 1;
+                keys.push(key);
+                values.push(value);
+            }
+        }
+    }
+
+    #[test]
+    #[cfg(feature = "garbage-collection")]
+    fn test_garbage_collect() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        {
+            let mut db = DefaultDatabase::new(DatabaseSettings {
+                path: Some(temp_dir.path().to_path_buf()),
+                cache_size: None,
+                index_type: IndexType::HashMap,
+            })
+            .unwrap();
+
+            db.put("key1", "value1".as_bytes()).unwrap();
+            db.put("key2", "value2".as_bytes()).unwrap();
+            db.put("key3", "value3".as_bytes()).unwrap();
+
+            db.delete("key2").unwrap();
+
+            db.persist().unwrap();
+        }
+
+        // Now we want to see the file size of the database / folder
+        let mut total_size = 0;
+        for entry in WalkDir::new(temp_dir.path()) {
+            let entry = entry.unwrap();
+            total_size += entry.metadata().unwrap().len();
+        }
+
+        assert!(total_size > 0);
+
+        {
+            let mut db = DefaultDatabase::new(DatabaseSettings {
+                path: Some(temp_dir.path().to_path_buf()),
+                cache_size: None,
+                index_type: IndexType::HashMap,
+            })
+            .unwrap();
+
+            db.gc().unwrap();
+            db.persist().unwrap();
+        }
+
+        // Now we want to see the file size of the database / folder
+        let mut total_size_after_gc = 0;
+        for entry in WalkDir::new(temp_dir.path()) {
+            let entry = entry.unwrap();
+            total_size_after_gc += entry.metadata().unwrap().len();
+        }
+
+        println!("Size difference: {} -> {}", total_size, total_size_after_gc);
+        assert!(total_size_after_gc < total_size);
     }
 }

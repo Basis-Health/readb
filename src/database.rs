@@ -5,6 +5,9 @@ use crate::io::loader::LazyLoader;
 use crate::io::Loader;
 use std::path::PathBuf;
 
+#[cfg(feature = "garbage-collection")]
+use crate::garbage_collection::compact_file;
+
 /// The main database structure.
 ///
 /// Represents the core of the database, managing the index table, cache, and data loading.
@@ -96,25 +99,27 @@ impl<C: Cache> Database<C, LazyLoader> {
     /// # Returns
     /// - `Some(String)` if the key is found.
     /// - `None` if the key doesn't exist or data loading fails.
-    pub fn get(&mut self, key: &str) -> anyhow::Result<Option<String>> {
+    pub fn get(&mut self, key: &str) -> anyhow::Result<Option<Vec<u8>>> {
         let index = self.index_table.get(key);
         if index.is_none() {
             return Ok(None);
         }
         let index = index.unwrap();
 
-        let cached = self.cache.get(index);
+        let cached = self.cache.get(&index);
         if cached.is_some() {
             return Ok(cached);
         }
 
-        let d = self.loader.load(*index);
+        let (offset, length) = index;
+        let d = self.loader.load(offset, length);
         if d.is_err() {
+            println!("Error loading data: {:?}", d.err());
             return Ok(None);
         }
         let d = d.unwrap();
 
-        self.cache.put(*index, d.clone());
+        self.cache.put(index, d.clone());
         Ok(Some(d))
     }
 
@@ -134,10 +139,12 @@ impl<C: Cache> Database<C, LazyLoader> {
             return Err(anyhow::anyhow!("Key not found"));
         }
         let index = index.unwrap();
-        self.index_table.insert(new.to_string(), *index)
+        self.index_table.insert(new, index)
     }
 
-    /// Deletes a key and its associated value from the database.
+    /// Deletes a key  from the index-table.
+    /// Note, this does not delete the data from disk. Once all references to the data are removed,
+    /// it might be garbage collected if the "garbage-collection" feature is enabled.
     ///
     /// # Parameters
     /// - `key`: The key to be removed.
@@ -160,8 +167,26 @@ impl<C: Cache> Database<C, LazyLoader> {
     /// Note: This method is only available if the "write" feature is enabled.
     /// Should not be used in production.
     #[cfg(feature = "write")]
-    pub fn put(&mut self, key: &str, value: &str) -> anyhow::Result<()> {
+    pub fn put(&mut self, key: &str, value: &[u8]) -> anyhow::Result<()> {
         let index = self.loader.add(value)?;
-        self.index_table.insert(key.to_string(), index)
+        self.index_table.insert(key, index)
+    }
+
+    /// Performs garbage collection on the database.
+    /// Note: This method is only available if the "garbage-collection" feature is enabled.
+    ///
+    /// This method requires a full scan of the index table, and is therefore very slow. It is
+    /// also not thread-safe.
+    #[cfg(feature = "garbage-collection")]
+    pub fn gc(&mut self) -> anyhow::Result<()> {
+        self.loader.read_and_replace(|data| {
+            let keys = self.index_table.all_key_values();
+            let (new_keys, new_data) = compact_file(keys, data);
+            self.index_table.replace_all(new_keys)?;
+
+            Ok(new_data)
+        })?;
+
+        Ok(())
     }
 }
