@@ -31,8 +31,44 @@ We have introduced the garbage collection feature which can be called to index t
 however, this is not recommended in a running system, but rather on startup or during no-activity periods.
 
 ## Benchmarks
-TODO: Copy the results from the benchmarks folder, you can also run them yourself using:
-`cargo bench --all-features`
+
+There are 2 benchmarks performed, a read only benchmark, and a read-write benchmark with 99 percent reads. First the write
+benchmark:
+
+| Operations | `readb` mean time | `sled` mean time |
+|------------|-------------------|------------------|
+| 1,000      | 147.02 µs         | 332.65 µs        |
+| 10,000     | 10.517 ms         | 3.7671 ms        |
+| 100,000    | 108.45 ms         | 40.801 ms        |
+| 1,000,000  | 238.48 ms         | 485.63 ms        |
+
+While readb is faster, please note that it does not compress the data.
+
+Here for the read benchmarks:
+- retrieve x items: retrieve all items from the database in random order
+- retrieve x items (10 percent): retrieve 10 percent of the items from the database in random order
+- retrieve x items (20 percent with repetitions): retrieve 3.5 percent of the items, but the total count is 20 percent of the items, so there are repetitions
+
+all times are in µs:
+
+| Benchmark type                                           | time rdb   | time sled  | time redb  |
+|----------------------------------------------------------|------------|------------|------------|
+| Retrieve 1000 items                                      | 50.30      | 79.25      | 97.95      |
+| Retrieve 1000 items (10 percent)                         | 49.05      | 17.84      | 22.39      |
+| Retrieve 1000 items (20 percent with repetitions)        | 49.16      | 33.92      | 43.17      |
+| Retrieve 10000 items                                     | 67.56      | 1,256.75   | 1,225.68   |
+| Retrieve 10000 items (10 percent)                        | 55.29      | 311.57     | 357.98     |
+| Retrieve 10000 items (20 percent with repetitions)       | 61.13      | 541.79     | 692.16     |
+| Retrieve 100000 items                                    | 209.59     | 36,977     | 52,558     |
+| Retrieve 100000 items (10 percent)                       | 86.25      | 3,465.1    | 5,090.9    |
+| Retrieve 100000 items (20 percent with repetitions)      | 124.29     | 6,831.8    | 10,151     |
+
+
+To show the difference in performance look at the following graph:
+
+![graph](./info/img.png)
+
+readb is the non-existant blue line, it is so fast that in comparison to sled and redb it is not even visible.
 
 ## Usage
 

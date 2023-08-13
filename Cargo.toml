@@ -25,14 +25,14 @@ redb = "1.0.5"
 warp = "0.3.5"
 rand = "0.8.5"
 walkdir = "2"
-#
-#[[bench]]
-#name = "rdb_vs_sled"
-#harness = false
 
 [[bench]]
-name = "write_benchmark"
+name = "rdb_vs_sled"
 harness = false
+
+#[[bench]]
+#name = "write_benchmark"
+#harness = false
 
 [features]
 default = []
