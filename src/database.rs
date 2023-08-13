@@ -8,7 +8,6 @@ use std::path::PathBuf;
 #[cfg(feature = "garbage-collection")]
 use crate::garbage_collection::compact_file;
 
-
 /// The main database structure.
 ///
 /// Represents the core of the database, managing the index table, cache, and data loading.
