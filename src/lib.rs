@@ -45,3 +45,6 @@ pub use index_table::IndexTable;
 mod remote;
 #[cfg(feature = "remote-cloning")]
 pub use remote::{cloner::clone_from, compression::CompressionType};
+
+#[cfg(feature = "garbage-collection")]
+mod garbage_collection;

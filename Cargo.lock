@@ -1156,6 +1156,7 @@ dependencies = [
  "sled",
  "tempfile",
  "tokio",
+ "walkdir",
  "warp",
 ]
 

@@ -1,193 +1,141 @@
 # Readatabase (readb)
 
-A simple, embedded read only key-value database implemented in Rust. The database strict focus on performance makes it
-infinitely faster than sled (see the benchmark section below). 
+A wise man once said: "Don't reinvent the wheel". Yet, here we are, a new simple embedded key-value database. 
 
-## Why a read only database?
-
-More often than not, we need a database to act as a LUT (Look Up Table) for static data. We will pre-populate the database
-on startup and then use it for reads. In such a scenario, we do not need a database that supports writes. In fact, we can
-populate the database before starting the app and then use it as a read only database.
-
-At Basis Health, we use this database for exercise data. We can quickly query thousands of exercises without freezing the
-app, or being dependent on the file system.
+readb is written in pure rust and is designed to be as simple as sled, while focusing strictly on read performance. The
+database can be seen primarily as a read-only database, although it does support writes (and deletes). The database is
+designed around the fundamental assumption that 99 % of operations are reads, more about this later.
 
 ## Features
-- **Fast and Efficient**: Uses caching to speed up frequently accessed reads.
-- **Modular Design**: Switch between different indexing strategies and caching methods easily.
+- **Custom cache options**: You can choose between different caching strategies and cache sizes, although most of them are
+  still in development.
 - **Lock free reads**: Reads are lock free and hence can be performed concurrently.
+- **Remote cloning**: Clone the database from a remote address to a local path
 
-## Limitations
-- **Read Only**: The database is read only and hence cannot be used for writes.
-- **One time indexing**: The database is indexed only once at the start and hence cannot be used for dynamic data.
+## Why is readb so fast?
+readb was designed read-first. This means that we can assume that our data content is static and will not change. This
+allow us to keep the data on the disk, but the index in memory. This allows us to have a very small memory footprint,
+while still being able to read data very fast.
 
-## Functionality
-### Base API
-- **new**: Create a new database.
-- **get**: Get the value associated with a key.
-- **link**: Link a key to another key
-- **delete**: Delete a key, does not delete any links or actual data
-- **persist**: Persist the new links to the database
+Not static, doesn't mean that you cannot add new keys. There are 2 options for adding new keys:
+- **link**: Link a key to another key, does not copy the data
+- **put**: Insert a new key-value pair into the database, appends the data to the end of the file
 
-### remote-cloning feature
-- **clone_from(address, path, compression)**
-  - Clone the database from a remote address to a local path
-  - compression: Compression type to use for the transfer. If None, no compression is used
+This append-only approach is a major reason for the speed of readb, whereas most other databases will use a B-tree or
+similar data structure to store the data, readb will simply append the data to the end of the file. 
 
-### write feature
-The write feature should only be used for building the database. It is not recommended to use it in production as it
-is not tested and is not optimized for performance. There are two additional functions:
-- **put**: Insert a new key-value pair into the database
-- **persist**: Persist the database to the disk
-
-Note that put and persist are not thread safe and should not be used concurrently. Furthermore, you cannot use the
-get function after inserting a new key-value pair until you persist the database. 
-
-## Getting Started
-
-### Prerequisites
-
-Make sure you have Rust and Cargo installed. If not, [install them from the official website](https://rustup.rs/).
-
-### Installing
-
-Clone the repository:
-
-```bash
-git clone https://github.com/Basis-Health/readb.git
-cd readb
-```
-
-Then build the project:
-
-```bash
-cargo build --release
-```
-
-### Usage
-
-## Populating the database
-
-The database can be populated using the `write` feature. To use the write feature, add the following to your `Cargo.toml`:
-
-```toml
-[dependencies]
-readb = { path = "path-to-your-local-repo", features = ["write"] }
-```
-
-Then, use the provided API to populate the database:
-
-```rust
-let mut database = DefaultDatabase::new(DatabaseSettings {
-  path: Some(database_dir),
-  cache_size: None,
-  index_type: HashMap,
-}).unwrap();
-
-database.put("key", "value").unwrap();
-database.put("another_key", "another_value").unwrap();
-database.persist().unwrap();
-```
-
-## Reading from the database
-
-To use the database in your Rust project, add it as a dependency in your `Cargo.toml`:
-
-```toml
-[dependencies]
-readb = { path = "path-to-your-local-repo" }
-```
-
-Then, use the provided API to interact with the database, database_dir is the directory where the database is located (the `.rdb.*` files):
-
-```rust
-use readb::{Database, DatabaseSettings, IndexType};
-
-let mut db = DefaultDatabase::new(DatabaseSettings {
-    path: Some(PathBuf::from(database_dir)),
-    cache_size: None, // Cache Default
-    index_type: IndexType::HashMap,
-}).unwrap();
-
-
-let existent_value = db.get("hi").unwrap();
-assert_eq!(existent_value.unwrap(), "hello".to_string());
-
-let non_existent_value = db.get("non-existent").unwrap();
-assert!(non_existent_value.is_none());
-```
-
-DefaultDatabase is a HashMap based indexing strategy and a LFU based caching strategy
-
-The database directory has to be a directory that exists and is writable. Alternatively, you cau use the `ignore-path-check`
-feature to ignore the path check and create the database in a file. However, that feature is not tested and is not recommended.
-
-If you don't know your index type, you can use `IndexType::Auto` to automatically detect the index type. However, this
-is not supported for creating/writing to the database.
+## Twist?
+When you look at the benchmarks later, you will notice that readb is beating both sled and redb for larger data-sizes. This
+is because we don't benchmark deletes. readb was never designed around deletes, and hence unused data is never deleted.
+We have introduced the garbage collection feature which can be called to index the database again and remove unused data,
+however, this is not recommended in a running system, but rather on startup or during no-activity periods.
 
 ## Benchmarks
+TODO: Copy the results from the benchmarks folder, you can also run them yourself using:
+`cargo bench --all-features`
 
-TODO: Re-run the benchmarks with the updates
+## Usage
+Alright, with that additional type definition, I'll expand the "Usage" section to also guide users on how to use the `DefaultDatabase` type.
 
-There are three benchmarks:
-- Regular: Access each key once
-- 10%: Access 10% of the keys
-- 20%: Access 3.5% of the keys 0.2n times
+---
 
-| Size       | readb time | sled time   | redb time | Details |
-|------------|------------|-------------|-----------|---------|
-| 10         | 36 µs      | 1 µs        | 910 ns    | Regular |
-| 10         | 36 µs      | 115 ns      | 350 ns    | 10%     |
-| 10         | 36 µs      | 220 ns      | 410 ns    | 20%     |
-| ---------- | ---------- | ----------- | --------- | ------- |
-| 100        | 37 µs      | 16 µs       | 12 µs     | Regular |
-| 100        | 37 µs      | 1  µs       | 1 µs      | 10%     |
-| 100        | 37 µs      | 3  µs       | 2 µs      | 20%     |
-| ---------- | ---------- | ----------- | --------- | ------- |
-| 1000       | 41 µs      | 206 µs      | 234 µs    | Regular |
-| 1000       | 37 µs      | 18 µs       | 22 µs     | 10%     |
-| 1000       | 39 µs      | 34 µs       | 43 µs     | 20%     |
-| ---------- | ---------- | ----------- | --------- | ------- |
-| 10000      | 60 µs      | 3 ms        | 3.6 ms    | Regular |
-| 10000      | 40 µs      | 287 µs      | 352 µs    | 10%     |
-| 10000      | 42 µs      | 534 µs      | 691 µs    | 20%     |
-| ---------- | ---------- | ----------- | --------- | ------- |
-| 100000     | 232 µs     | 40 ms       | 52 ms     | Regular |
-| 100000     | 59 µs      | 4 ms        | 5 ms      | 10%     |
-| 100000     | 77 µs      | 7 ms        | 10 ms     | 20%     |
+## Usage
 
-![Benchmark Plot](./info/img.png)
+### Setting up the Database
 
-readb performs significantly better than sled and redb when the data size is large enough. Because of rdb's unique index design,
-the performance improvement grows as the data size increases.
+The `Database` struct is the core representation of the database, managing indexing, caching, and data loading. It requires two generic parameters:
 
-## Roadmap
+- `C`: This represents the caching mechanism. Any type that implements the `Cache` trait can be used.
+- `L`: This represents the data loading mechanism. Any type that implements the `Loader` trait can be used.
 
-- [x] Implement a basic database
-- [x] Implement a basic indexing strategy
-- [x] Implement a basic caching strategy
-- [x] Implement a basic API
-- [x] Implement remote cloning
-- [x] Implement compression
-- [x] Implement a benchmarking suite
-- [ ] Implement more indexing strategies
-  - [x] HashMap
-  - [x] BTreeMap
-  - [ ] LSM Tree
-  - [ ] B+ Tree
-- [ ] Implement a more efficient caching strategy
-  - [x] LFU
-  - [ ] LRU
-  - [ ] ARC
-  - [ ] MRU
-- [x] Add delete on keys
+#### Database Initialization:
 
-## Stability
+1. **Using Custom Settings**
 
-The project is still in beta, albeit it is stable enough to be used in production. The API may be extended in the future,
-but the functionality will remain the same. We will try to keep it backwards compatible on the 0.x.x versions. We guarantee
-backwards compatibility on the patch versions.
+   You can provide custom settings using the `DatabaseSettings` structure:
 
-## Future Work
+   ```rust
+   let db_settings = DatabaseSettings {
+       path: Some(PathBuf::from("/path/to/db/directory")),
+       cache_size: Some(1024),
+       index_type: IndexType::HashMap,
+   };
+   let db: Database<YourCacheType, LazyLoader> = Database::new(db_settings).unwrap();
+   ```
 
-This project is intended as the groundwork for a key-value database with write support.
+2. **Using Default Settings**
+
+   If you want to initialize the database with default settings, only providing the directory:
+
+   ```rust
+   let db = Database::<YourCacheType, LazyLoader>::new_default(PathBuf::from("/path/to/db/directory"));
+   ```
+
+3. **Using the Default Database Type**
+
+   For convenience, a `DefaultDatabase` type is provided, which uses `LfuCache` for caching and `LazyLoader` for loading:
+
+   ```rust
+   let default_db = DefaultDatabase::new_default(PathBuf::from("/path/to/db/directory"));
+   ```
+
+### Working with the Database
+
+1. **Getting a Value**
+
+   To retrieve a value associated with a given key:
+
+   ```rust
+   let value: Option<Vec<u8>> = db.get("your_key").unwrap();
+   ```
+
+2. **Linking Keys**
+
+   If you wish to create an alias for an existing key:
+
+   ```rust
+   db.link("existing_key", "new_alias_key").unwrap();
+   ```
+
+3. **Deleting a Key**
+
+   This will delete the key from the index table, but not from the disk:
+
+   ```rust
+   db.delete("key_to_remove").unwrap();
+   ```
+
+4. **Persisting Data**
+
+   To ensure data persistence:
+
+   ```rust
+   db.persist().unwrap();
+   ```
+
+### Additional Features
+
+1. **Writing Data** (requires `write` feature)
+
+   To add a new key-value pair:
+
+   ```rust
+   db.put("new_key", b"your_value").unwrap();
+   ```
+
+2. **Garbage Collection** (requires `garbage-collection` feature)
+
+   To perform garbage collection:
+
+   ```rust
+   db.gc().unwrap();
+   ```
+
+## Roadmap to 1.0
+
+Before we can release 1.0, we need to implement more caching strategies. The API however is stable and will not change
+before 1.0, we're already using it in production.
+
+## License
+
+This project is licensed under Apache License, Version 2.0 (http://www.apache.org/licenses/LICENSE-2.0).

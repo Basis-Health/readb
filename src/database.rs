@@ -1,4 +1,5 @@
 use crate::cache::Cache;
+use crate::garbage_collection::compact_file;
 use crate::index_table::factory::{IndexFactory, IndexType};
 use crate::index_table::IndexTable;
 use crate::io::loader::LazyLoader;
@@ -111,6 +112,7 @@ impl<C: Cache> Database<C, LazyLoader> {
         let (offset, length) = index;
         let d = self.loader.load(offset, length);
         if d.is_err() {
+            println!("Error loading data: {:?}", d.err());
             return Ok(None);
         }
         let d = d.unwrap();
@@ -138,7 +140,9 @@ impl<C: Cache> Database<C, LazyLoader> {
         self.index_table.insert(new, index)
     }
 
-    /// Deletes a key and its associated value from the database.
+    /// Deletes a key  from the index-table.
+    /// Note, this does not delete the data from disk. Once all references to the data are removed,
+    /// it might be garbage collected if the "garbage-collection" feature is enabled.
     ///
     /// # Parameters
     /// - `key`: The key to be removed.
@@ -164,5 +168,23 @@ impl<C: Cache> Database<C, LazyLoader> {
     pub fn put(&mut self, key: &str, value: &[u8]) -> anyhow::Result<()> {
         let index = self.loader.add(value)?;
         self.index_table.insert(key, index)
+    }
+
+    /// Performs garbage collection on the database.
+    /// Note: This method is only available if the "garbage-collection" feature is enabled.
+    ///
+    /// This method requires a full scan of the index table, and is therefore very slow. It is
+    /// also not thread-safe.
+    #[cfg(feature = "garbage-collection")]
+    pub fn gc(&mut self) -> anyhow::Result<()> {
+        self.loader.read_and_replace(|data| {
+            let keys = self.index_table.all_key_values();
+            let (new_keys, new_data) = compact_file(keys, data);
+            self.index_table.replace_all(new_keys)?;
+
+            Ok(new_data)
+        })?;
+
+        Ok(())
     }
 }

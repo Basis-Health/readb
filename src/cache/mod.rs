@@ -1,4 +1,4 @@
-type Key = (usize, usize);
+pub type Key = (u64, usize);
 type Value = Vec<u8>;
 
 pub trait Cache {
@@ -7,6 +7,8 @@ pub trait Cache {
 
     fn get(&mut self, key: &Key) -> Option<Value>;
     fn put(&mut self, key: Key, value: Value);
+
+    fn invalidate(&mut self);
 }
 
 pub(crate) mod lfu;

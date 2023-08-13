@@ -56,6 +56,11 @@ impl Cache for LfuCache {
         self.map.insert(key, (value, 1));
         self.frequencies.push(Reverse((1, key)));
     }
+
+    fn invalidate(&mut self) {
+        self.map.clear();
+        self.frequencies.clear();
+    }
 }
 
 #[cfg(test)]

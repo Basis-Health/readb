@@ -7,6 +7,7 @@ pub mod hash_map;
 
 pub(crate) mod factory;
 
+use crate::cache::Key;
 use anyhow::Result;
 
 /// Represents an index table which can store key-value pairs, where the key is a string and
@@ -17,14 +18,16 @@ pub trait IndexTable: Send + Sync {
     /// Retrieves a value by its key.
     ///
     /// Returns `None` if the key is not present in the table.
-    fn get(&self, key: &str) -> Option<(usize, usize)>;
+    fn get(&self, key: &str) -> Option<crate::cache::Key>;
 
     /// Inserts a key-value pair into the index table.
     ///
     /// Returns a `Result` indicating success or failure of the operation.
-    fn insert(&mut self, key: &str, value: (usize, usize)) -> Result<()>;
+    fn insert(&mut self, key: &str, value: crate::cache::Key) -> Result<()>;
 
     /// Deletes a key-value pair from the index table by its key.
+    /// Note: This does not delete the data from disk. Once all references to the data are removed,
+    /// it might be garbage collected if the "garbage-collection" feature is enabled.
     ///
     /// Returns a `Result` indicating success or failure of the operation.
     fn delete(&mut self, key: &str) -> Result<()>;
@@ -42,6 +45,12 @@ pub trait IndexTable: Send + Sync {
     #[cfg(test)]
     /// Returns the type of the index for testing purposes.
     fn index_type(&self) -> &str;
+
+    /// Returns all the key-value pairs in the index table.
+    fn all_key_values(&self) -> Vec<(String, Key)>;
+
+    /// Replaces all the key-value pairs in the index table.
+    fn replace_all(&mut self, key_values: Vec<(String, Key)>) -> Result<()>;
 }
 
 #[macro_export]

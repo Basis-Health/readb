@@ -1,9 +1,9 @@
+use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use rand::distributions::Alphanumeric;
+use rand::rngs::ThreadRng;
+use rand::Rng;
 use std::cmp::min;
 use std::fs;
-use criterion::{black_box, Criterion, criterion_group, criterion_main};
-use rand::distributions::Alphanumeric;
-use rand::Rng;
-use rand::rngs::ThreadRng;
 
 enum Operation {
     Read(String),
@@ -22,7 +22,12 @@ fn benchmark_write(c: &mut Criterion) {
     }
 
     let data: Vec<(String, String)> = (0..n)
-        .map(|_| (random_32_byte_string(&mut rand), random_32_byte_string(&mut rand)))
+        .map(|_| {
+            (
+                random_32_byte_string(&mut rand),
+                random_32_byte_string(&mut rand),
+            )
+        })
         .collect();
 
     // now fill that data into both databases withouth measuring
@@ -43,11 +48,14 @@ fn benchmark_write(c: &mut Criterion) {
         path: Some(readb),
         cache_size: None,
         index_type: readb::IndexType::HashMap,
-    }).unwrap();
+    })
+    .unwrap();
 
     for (key, value) in data.iter() {
         readb_instance.put(key.as_str(), value.as_bytes()).unwrap();
-        sled_instance.insert(key.as_bytes(), value.as_bytes()).unwrap();
+        sled_instance
+            .insert(key.as_bytes(), value.as_bytes())
+            .unwrap();
     }
 
     readb_instance.persist().unwrap();
@@ -88,9 +96,11 @@ fn benchmark_write(c: &mut Criterion) {
                     match task {
                         Operation::Read(key) => {
                             let _ = readb_instance.get(black_box(key)).unwrap();
-                        },
+                        }
                         Operation::Write((key, value)) => {
-                            let _ = readb_instance.put(black_box(key), black_box(value.as_bytes())).unwrap();
+                            let _ = readb_instance
+                                .put(black_box(key), black_box(value.as_bytes()))
+                                .unwrap();
                         }
                     }
                 }
@@ -103,9 +113,11 @@ fn benchmark_write(c: &mut Criterion) {
                     match task {
                         Operation::Read(key) => {
                             let _ = sled_instance.get(black_box(key.as_bytes())).unwrap();
-                        },
+                        }
                         Operation::Write((key, value)) => {
-                            let _ = sled_instance.insert(black_box(key.as_bytes()), black_box(value.as_bytes())).unwrap();
+                            let _ = sled_instance
+                                .insert(black_box(key.as_bytes()), black_box(value.as_bytes()))
+                                .unwrap();
                         }
                     }
                 }

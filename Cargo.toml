@@ -24,6 +24,7 @@ sled = {version = "0.34.7" }
 redb = "1.0.5"
 warp = "0.3.5"
 rand = "0.8.5"
+walkdir = "2"
 #
 #[[bench]]
 #name = "rdb_vs_sled"
@@ -42,3 +43,4 @@ remote-cloning = ["reqwest"]
 remote-brotli-compression = ["brotli"]
 
 write = []
+garbage-collection = []

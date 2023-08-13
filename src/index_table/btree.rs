@@ -1,3 +1,4 @@
+use crate::cache::Key;
 use crate::default_persist;
 use crate::index_table::IndexTable;
 use bincode::deserialize_from;
@@ -9,7 +10,7 @@ use std::path::PathBuf;
 
 #[repr(C)]
 pub struct BTreeMapIndexTable {
-    table: BTreeMap<String, (usize, usize)>,
+    table: BTreeMap<String, Key>,
     file_path: PathBuf,
 }
 
@@ -25,7 +26,7 @@ impl BTreeMapIndexTable {
         file.lock_exclusive()?;
 
         let reader = BufReader::new(&file);
-        let table: BTreeMap<String, (usize, usize)> = match deserialize_from(reader) {
+        let table: BTreeMap<String, Key> = match deserialize_from(reader) {
             Ok(table) => table,
             Err(_) => BTreeMap::new(),
         };
@@ -48,11 +49,11 @@ impl BTreeMapIndexTable {
 }
 
 impl IndexTable for BTreeMapIndexTable {
-    fn get(&self, key: &str) -> Option<(usize, usize)> {
+    fn get(&self, key: &str) -> Option<Key> {
         self.table.get(key).copied()
     }
 
-    fn insert(&mut self, key: &str, value: (usize, usize)) -> anyhow::Result<()> {
+    fn insert(&mut self, key: &str, value: Key) -> anyhow::Result<()> {
         self.table.insert(key.to_string(), value);
         Ok(())
     }
@@ -88,6 +89,15 @@ impl IndexTable for BTreeMapIndexTable {
     #[cfg(test)]
     fn index_type(&self) -> &str {
         "btree"
+    }
+
+    fn all_key_values(&self) -> Vec<(String, Key)> {
+        self.table.iter().map(|(k, v)| (k.clone(), *v)).collect()
+    }
+
+    fn replace_all(&mut self, key_values: Vec<(String, Key)>) -> anyhow::Result<()> {
+        self.table = key_values.into_iter().collect();
+        Ok(())
     }
 }
 
