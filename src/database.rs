@@ -1,10 +1,13 @@
 use crate::cache::Cache;
-use crate::garbage_collection::compact_file;
 use crate::index_table::factory::{IndexFactory, IndexType};
 use crate::index_table::IndexTable;
 use crate::io::loader::LazyLoader;
 use crate::io::Loader;
 use std::path::PathBuf;
+
+#[cfg(feature = "garbage-collection")]
+use crate::garbage_collection::compact_file;
+
 
 /// The main database structure.
 ///

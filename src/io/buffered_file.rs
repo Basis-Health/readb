@@ -92,6 +92,7 @@ impl BufferedFile {
         }
     }
 
+    #[cfg(feature = "garbage-collection")]
     pub fn read_all(&mut self) -> Result<Vec<u8>, std::io::Error> {
         self.persist()?; // Persist the buffer before reading the file
         self.ensure_file_open()?;
@@ -105,6 +106,7 @@ impl BufferedFile {
         Ok(data)
     }
 
+    #[cfg(feature = "garbage-collection")]
     pub fn replace_with(&mut self, data: &[u8]) -> Result<(), std::io::Error> {
         self.ensure_file_closed();
         let mut file = OpenOptions::new().write(true).open(&self.path)?;
