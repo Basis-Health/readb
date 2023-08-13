@@ -35,11 +35,6 @@ TODO: Copy the results from the benchmarks folder, you can also run them yoursel
 `cargo bench --all-features`
 
 ## Usage
-Alright, with that additional type definition, I'll expand the "Usage" section to also guide users on how to use the `DefaultDatabase` type.
-
----
-
-## Usage
 
 ### Setting up the Database
 
