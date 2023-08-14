@@ -8,7 +8,7 @@ description = "A simple, efficient, and modular embedded read-first key-value da
 repository = "https://github.com/Basis-Health/readb"
 homepage = "https://github.com/Basis-Health/readb"
 readme = "README.md"
-license = "Apache-2"
+license = "Apache-2.0"
 
 keywords = ["database", "embedded", "key-value"]
 categories = ["database-implementations", "embedded"]
