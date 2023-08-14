@@ -2,9 +2,7 @@ name: Rust CI
 
 on:
   push:
-    branches: [ master ]
-  pull_request:
-    branches: [ master ]
+    branches: [ release ]
 
 jobs:
   build:
@@ -30,7 +28,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
         with:
-          repository: Basis-Health/readb
           ref: master
 
       - name: Setup Rust
