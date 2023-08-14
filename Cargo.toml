@@ -3,10 +3,15 @@ name = "readb"
 version = "0.3.0"
 edition = "2021"
 authors = ["Alexander Procelewski <alex@basishealth.io>"]
-description = "A simple, efficient, and modular embedded read-only key-value database in Rust."
-repository = "https://github.com/Basis-Health/readb"
-readme = "README.md"
+description = "A simple, efficient, and modular embedded read-first key-value database in Rust."
 
+repository = "https://github.com/Basis-Health/readb"
+homepage = "https://github.com/Basis-Health/readb"
+readme = "README.md"
+license = "Apache-2"
+
+keywords = ["database", "embedded", "key-value"]
+categories = ["database-implementations", "embedded"]
 
 [dependencies]
 anyhow = "1.0.72"
