@@ -1,4 +1,5 @@
 # Readatabase (readb)
+![crates.io](https://img.shields.io/crates/v/readb.svg)
 
 A wise man once said: "Don't reinvent the wheel". Yet, here we are, a new simple embedded key-value database. 
 
