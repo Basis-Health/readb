@@ -1,5 +1,6 @@
 # Readatabase (readb)
 ![crates.io](https://img.shields.io/crates/v/readb.svg)
+[![Rust CI](https://github.com/Basis-Health/readb/actions/workflows/rust.yml/badge.svg)](https://github.com/Basis-Health/readb/actions/workflows/rust.yml)
 
 A wise man once said: "Don't reinvent the wheel". Yet, here we are, a new simple embedded key-value database. 
 
