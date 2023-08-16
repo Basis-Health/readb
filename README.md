@@ -53,7 +53,7 @@ Here for the read benchmarks:
 
 all times are in µs:
 
-| Benchmark type                                           | time rdb   | time sled  | time redb  |
+| Benchmark type                                           | time readb   | time sled  | time redb  |
 |----------------------------------------------------------|------------|------------|------------|
 | Retrieve 1000 items                                      | 50.30      | 79.25      | 97.95      |
 | Retrieve 1000 items (10 percent)                         | 49.05      | 17.84      | 22.39      |
