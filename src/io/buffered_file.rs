@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::PathBuf;
@@ -100,6 +102,7 @@ impl BufferedFile {
         let file = self.file.as_mut().unwrap();
         file.seek(SeekFrom::Start(0))?;
 
+        // TODO: Add streaming for larger files
         let mut data = vec![0u8; self.file_length as usize];
         file.read_exact(&mut data)?;
 

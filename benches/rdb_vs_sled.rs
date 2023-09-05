@@ -1,8 +1,8 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use rand::seq::SliceRandom;
 use rand::SeedableRng;
-use readb::{DatabaseSettings, DefaultDatabase, IndexTable, IndexType};
-use redb::{Database, Error, ReadableTable, TableDefinition};
+use readb::{Database, DatabaseSettings, DefaultDatabase, IndexTable, IndexType};
+use redb::{Database as RDatabase, Error, ReadableTable, TableDefinition};
 use sled;
 use std::cmp::max;
 use std::fs::write;
@@ -26,16 +26,15 @@ fn benchmark_retrieval_from_db(c: &mut Criterion) {
                 path: Some(dir.path().to_path_buf()),
                 cache_size: None,
                 index_type: IndexType::HashMap,
-            })
-            .unwrap();
-
+                ..Default::default()
+            });
             for (key, value) in data_copy.iter() {
                 db.put(key.as_str(), value.as_bytes()).unwrap();
             }
         }
 
         // Benchmark for your database system
-        group.bench_function("rdb_retrieve", |b| {
+        group.bench_function("readb_retrieve", |b| {
             // shuffle data with seed 42
             let mut data = data_copy.clone();
             let mut rng = rand::rngs::StdRng::seed_from_u64(42);
@@ -47,8 +46,8 @@ fn benchmark_retrieval_from_db(c: &mut Criterion) {
                     path: Some(dir.path().to_path_buf()),
                     cache_size: None,
                     index_type: IndexType::HashMap,
-                })
-                .unwrap();
+                    ..Default::default()
+                });
 
                 for (key, _) in data.iter() {
                     let _ = db.get(black_box(key)).unwrap();
@@ -56,7 +55,7 @@ fn benchmark_retrieval_from_db(c: &mut Criterion) {
             });
         });
 
-        group.bench_function("rdb_retrieve_10_percent", |b| {
+        group.bench_function("readb_retrieve_10_percent", |b| {
             // shuffle data with seed 42
             let mut data = data_copy.clone();
             let mut rng = rand::rngs::StdRng::seed_from_u64(42);
@@ -70,8 +69,8 @@ fn benchmark_retrieval_from_db(c: &mut Criterion) {
                     path: Some(dir.path().to_path_buf()),
                     cache_size: None,
                     index_type: IndexType::HashMap,
-                })
-                .unwrap();
+                    ..Default::default()
+                });
 
                 for (key, _) in data.iter() {
                     let _ = db.get(black_box(key)).unwrap();
@@ -79,7 +78,7 @@ fn benchmark_retrieval_from_db(c: &mut Criterion) {
             });
         });
 
-        group.bench_function("rdb_retrieve_20_percent_with_repetitions", |b| {
+        group.bench_function("readb_retrieve_20_percent_with_repetitions", |b| {
             // shuffle data with seed 42
             let mut data = Vec::new();
             let mut rng = rand::rngs::StdRng::seed_from_u64(42);
@@ -103,8 +102,8 @@ fn benchmark_retrieval_from_db(c: &mut Criterion) {
                     path: Some(dir.path().to_path_buf()),
                     cache_size: None,
                     index_type: IndexType::HashMap,
-                })
-                .unwrap();
+                    ..Default::default()
+                });
 
                 for (key, _) in data.iter() {
                     let _ = db.get(black_box(key)).unwrap();
@@ -180,7 +179,7 @@ fn benchmark_retrieval_from_db(c: &mut Criterion) {
             });
         });
 
-        let redb = Database::create(dir.path().join("./redb.rdb")).unwrap();
+        let redb = RDatabase::create(dir.path().join("./redb.rdb")).unwrap();
         const TABLE: TableDefinition<&str, &str> = TableDefinition::new("my_data");
 
         let write_txn = redb.begin_write().unwrap();

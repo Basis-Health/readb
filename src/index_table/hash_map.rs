@@ -99,6 +99,14 @@ impl IndexTable for HashMapIndexTable {
         self.table = key_values.into_iter().collect();
         Ok(())
     }
+
+    #[cfg(feature = "write")]
+    fn snapshot(&self) -> Box<dyn IndexTable> {
+        Box::new(Self {
+            table: self.table.clone(),
+            file_path: self.file_path.clone(),
+        })
+    }
 }
 
 #[cfg(test)]
