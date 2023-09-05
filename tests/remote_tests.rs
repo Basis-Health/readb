@@ -1,6 +1,6 @@
 #[cfg(all(feature = "remote-cloning", feature = "write"))]
 mod tests {
-    use readb::{clone_from, DatabaseSettings, DefaultDatabase, IndexType};
+    use readb::{clone_from, Database, DatabaseSettings, DefaultDatabase, IndexType};
     use std::fs;
     use std::path::PathBuf;
     use tokio::sync::OnceCell;
@@ -22,8 +22,8 @@ mod tests {
             path: Some(location.to_path_buf()),
             cache_size: None,
             index_type: IndexType::HashMap,
-        })
-        .unwrap();
+            ..Default::default()
+        });
 
         for (_, (key, val)) in RANDOM_STRINGS_WITH_KEYS.iter().enumerate() {
             db.put(key, val.as_bytes()).unwrap();
@@ -86,8 +86,8 @@ mod tests {
             path: Some(database_dir.to_path_buf()),
             cache_size: None,
             index_type: IndexType::HashMap,
-        })
-        .unwrap();
+            ..Default::default()
+        });
 
         for (key, value) in RANDOM_STRINGS_WITH_KEYS.iter() {
             assert_eq!(db.get(key).unwrap().unwrap(), value.as_bytes());

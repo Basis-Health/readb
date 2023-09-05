@@ -2,7 +2,7 @@
 mod tests {
     use rand::Rng;
 
-    use readb::{DatabaseSettings, DefaultDatabase, IndexType};
+    use readb::{Database, DatabaseSettings, DefaultDatabase, IndexType};
     #[cfg(feature = "garbage-collection")]
     use walkdir::WalkDir;
 
@@ -14,8 +14,8 @@ mod tests {
                 path: Some(dir.path().to_path_buf()),
                 cache_size: None,
                 index_type: IndexType::HashMap,
-            })
-            .unwrap();
+                ..Default::default()
+            });
 
             db.put("key", "value".as_bytes()).unwrap();
             db.put("another_key", "another_value".as_bytes()).unwrap();
@@ -26,8 +26,8 @@ mod tests {
             path: Some(dir.path().to_path_buf()),
             cache_size: None,
             index_type: IndexType::HashMap,
-        })
-        .unwrap();
+            ..Default::default()
+        });
 
         assert_eq!(db.get("key").unwrap().unwrap(), "value".as_bytes());
         assert!(db.get("another_key").unwrap().is_some());
@@ -42,8 +42,8 @@ mod tests {
                 path: Some(dir.path().to_path_buf()),
                 cache_size: None,
                 index_type: IndexType::HashMap,
-            })
-            .unwrap();
+                ..Default::default()
+            });
 
             db.put("key", "value".as_bytes()).unwrap();
             db.put("another_key", "another_value".as_bytes()).unwrap();
@@ -54,8 +54,8 @@ mod tests {
             path: Some(dir.path().to_path_buf()),
             cache_size: None,
             index_type: IndexType::HashMap,
-        })
-        .unwrap();
+            ..Default::default()
+        });
 
         // Easy test
         db.link("key", "lined_key").unwrap();
@@ -91,8 +91,8 @@ mod tests {
                 path: Some(dir.path().to_path_buf()),
                 cache_size: None,
                 index_type: IndexType::HashMap,
-            })
-            .unwrap();
+                ..Default::default()
+            });
 
             db.put("key", &encoded).unwrap();
             db.put("another_key", &encoded2).unwrap();
@@ -103,8 +103,8 @@ mod tests {
             path: Some(dir.path().to_path_buf()),
             cache_size: None,
             index_type: IndexType::HashMap,
-        })
-        .unwrap();
+            ..Default::default()
+        });
 
         assert_eq!(db.get("key").unwrap().unwrap(), encoded);
         assert_eq!(db.get("another_key").unwrap().unwrap(), encoded2);
@@ -118,8 +118,8 @@ mod tests {
                 path: Some(dir.path().to_path_buf()),
                 cache_size: None,
                 index_type: IndexType::HashMap,
-            })
-            .unwrap();
+                ..Default::default()
+            });
 
             for i in 0..10000 {
                 db.put(
@@ -136,8 +136,8 @@ mod tests {
             path: Some(dir.path().to_path_buf()),
             cache_size: None,
             index_type: IndexType::HashMap,
-        })
-        .unwrap();
+            ..Default::default()
+        });
 
         assert_eq!(db.get("key0").unwrap().unwrap(), "value0".as_bytes());
         assert_eq!(db.get("key4242").unwrap().unwrap(), "value4242".as_bytes());
@@ -153,8 +153,8 @@ mod tests {
                 path: Some(dir.path().to_path_buf()),
                 cache_size: None,
                 index_type: IndexType::HashMap,
-            })
-            .unwrap();
+                ..Default::default()
+            });
 
             for i in 0..10000 {
                 db.put(
@@ -178,8 +178,8 @@ mod tests {
                         path: Some(dir),
                         cache_size: None,
                         index_type: IndexType::HashMap,
-                    })
-                    .unwrap();
+                        ..Default::default()
+                    });
                     barrier.wait();
 
                     for i in 0..10000 {
@@ -203,8 +203,8 @@ mod tests {
             path: Some(temp_dir.path().to_path_buf()),
             cache_size: None,
             index_type: IndexType::HashMap,
-        })
-        .unwrap();
+            ..Default::default()
+        });
 
         // Case 1: Load all data into buffer, so store < 4096 bytes
         println!("Case 1");
@@ -261,8 +261,8 @@ mod tests {
             path: Some(temp_dir.path().to_path_buf()),
             cache_size: None,
             index_type: IndexType::HashMap,
-        })
-        .unwrap();
+            ..Default::default()
+        });
 
         let mut rng = rand::thread_rng();
         let mut keys: Vec<String> = Vec::new();
@@ -294,8 +294,8 @@ mod tests {
                 path: Some(temp_dir.path().to_path_buf()),
                 cache_size: None,
                 index_type: IndexType::HashMap,
-            })
-            .unwrap();
+                ..Default::default()
+            });
 
             db.put("key1", "value1".as_bytes()).unwrap();
             db.put("key2", "value2".as_bytes()).unwrap();
@@ -320,8 +320,8 @@ mod tests {
                 path: Some(temp_dir.path().to_path_buf()),
                 cache_size: None,
                 index_type: IndexType::HashMap,
-            })
-            .unwrap();
+                ..Default::default()
+            });
 
             db.gc().unwrap();
             db.persist().unwrap();
@@ -336,5 +336,15 @@ mod tests {
 
         println!("Size difference: {} -> {}", total_size, total_size_after_gc);
         assert!(total_size_after_gc < total_size);
+    }
+
+    #[test]
+    fn test_create_dir() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let _ = DefaultDatabase::new(DatabaseSettings {
+            path: Some(temp_dir.path().join("./some_random_temp_dir")),
+            create_path: true,
+            ..Default::default()
+        });
     }
 }

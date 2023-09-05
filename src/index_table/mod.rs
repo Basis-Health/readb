@@ -51,6 +51,11 @@ pub trait IndexTable: Send + Sync {
 
     /// Replaces all the key-value pairs in the index table.
     fn replace_all(&mut self, key_values: Vec<(String, Key)>) -> Result<()>;
+
+    /// Snapshot the current state of the index table.
+    /// This is used for transactions.
+    #[cfg(feature = "write")]
+    fn snapshot(&self) -> Box<dyn IndexTable>;
 }
 
 #[macro_export]
