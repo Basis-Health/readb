@@ -8,14 +8,13 @@ use std::fs;
 use std::path::PathBuf;
 
 #[cfg(feature = "write")]
-use crate::databases::db_trait::DatabaseTransactionsIO;
-#[cfg(feature = "write")]
-use crate::transactions::{Transaction, simple::SimpleTransaction};
-#[cfg(feature = "write")]
 use crate::cache::Key;
 #[cfg(feature = "write")]
+use crate::databases::db_trait::DatabaseTransactionsIO;
+#[cfg(feature = "write")]
+use crate::transactions::{simple::SimpleTransaction, Transaction};
+#[cfg(feature = "write")]
 use anyhow::bail;
-
 
 #[cfg(feature = "garbage-collection")]
 use crate::garbage_collection::compact_file;

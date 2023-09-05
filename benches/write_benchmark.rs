@@ -2,9 +2,9 @@ use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use rand::distributions::Alphanumeric;
 use rand::rngs::ThreadRng;
 use rand::Rng;
+use readb::Database;
 use std::cmp::min;
 use std::fs;
-use readb::Database;
 
 enum Operation {
     Read(String),
@@ -122,17 +122,13 @@ fn benchmark_write(c: &mut Criterion) {
                 for task in tasks.iter() {
                     match task {
                         Operation::Read(key) => {
-                            tx
-                                .commit()
-                                .unwrap();
+                            tx.commit().unwrap();
 
                             tx = readb_tx_instance.tx().unwrap();
                             let _ = readb_instance.get(black_box(key)).unwrap();
                         }
                         Operation::Write((key, value)) => {
-                            tx
-                                .put(black_box(key), black_box(value.as_bytes()))
-                                .unwrap();
+                            tx.put(black_box(key), black_box(value.as_bytes())).unwrap();
                         }
                     }
                 }
