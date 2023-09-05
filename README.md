@@ -11,7 +11,7 @@
 
 🔍 **"Don't reinvent the wheel."** Despite this wisdom, here we are with **readb**: a fresh, streamlined embedded key-value database crafted in pure Rust.
 
-Balancing simplicity akin to sled, readb boasts outstanding read performance. Primarily focused on reads, it also caters to writes and deletes. It remains lightweight with minimal dependencies and under 1KB size.
+Balancing simplicity akin to sled, readb boasts outstanding read performance. Primarily focused on reads, it also caters to writes and deletes. It remains lightweight with minimal dependencies and under 200KB size.
 
 ## 🌟 Features
 - **Custom Cache**: Choose from an array of caching strategies (some still under development).
