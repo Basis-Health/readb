@@ -1,4 +1,6 @@
 # 📚 Readatabase (readb)
+![crates.io](https://img.shields.io/crates/v/readb.svg)
+[![Rust CI](https://github.com/Basis-Health/readb/actions/workflows/rust.yml/badge.svg)](https://github.com/Basis-Health/readb/actions/workflows/rust.yml)
 
 ## 🚨 **Update Alert**: BREAKING CHANGES in 0.4.0
 - 🛠 Refactored database code structure. You must now use `use readb::Database;`.
@@ -40,7 +42,7 @@ If you predominantly deal with read requests and yearn for a speedy, efficient l
 
 **Read Benchmark**:
 
-| Benchmark type                                           | time rdb   | time sled  | time redb  |
+| Benchmark type                                           | time readb   | time sled  | time redb  |
 |----------------------------------------------------------|------------|------------|------------|
 | Retrieve 1000 items                                      | 50.30      | 79.25      | 97.95      |
 | Retrieve 1000 items (10 percent)                         | 49.05      | 17.84      | 22.39      |
