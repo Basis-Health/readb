@@ -1,7 +1,7 @@
 use crate::cache::lfu::LfuCache;
-use crate::io::loader::LazyLoader;
+use crate::databases::lazy_loader_db::LLDatabase;
 
-pub type DefaultDatabase = Database<LfuCache, LazyLoader>;
+pub type DefaultDatabase = LLDatabase<LfuCache>;
 
-pub use crate::database::Database;
-pub use crate::database::DatabaseSettings;
+pub use crate::databases::db_trait::Database;
+pub use crate::databases::db_trait::DatabaseSettings;

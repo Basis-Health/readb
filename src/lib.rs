@@ -35,7 +35,7 @@ mod io;
 pub use index_table::factory::IndexType;
 
 mod api;
-mod database;
+mod databases;
 
 pub use api::*;
 
@@ -48,3 +48,6 @@ pub use remote::{cloner::clone_from, compression::CompressionType};
 
 #[cfg(feature = "garbage-collection")]
 mod garbage_collection;
+
+#[cfg(feature = "write")]
+mod transactions;

@@ -1,6 +1,6 @@
 [package]
 name = "readb"
-version = "0.3.0"
+version = "0.4.0"
 edition = "2021"
 authors = ["Alexander Procelewski <alex@basishealth.io>"]
 description = "A simple, efficient, and modular embedded read-first key-value database in Rust."
@@ -33,6 +33,7 @@ walkdir = "2"
 
 [[bench]]
 name = "rdb_vs_sled"
+required-features = ["write"]
 harness = false
 
 #[[bench]]
@@ -42,6 +43,8 @@ harness = false
 [features]
 default = []
 ignore-path-check = []
+
+error-on-rollback-committed = []
 
 default-remote = ["remote-cloning", "remote-brotli-compression"]
 remote-cloning = ["reqwest"]

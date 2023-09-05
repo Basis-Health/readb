@@ -2,6 +2,7 @@ use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use rand::distributions::Alphanumeric;
 use rand::rngs::ThreadRng;
 use rand::Rng;
+use readb::Database;
 use std::cmp::min;
 use std::fs;
 
@@ -35,6 +36,9 @@ fn benchmark_write(c: &mut Criterion) {
     let readb = tempdir.path().join("readb");
     fs::create_dir(&readb).unwrap();
 
+    let readb_tx = tempdir.path().join("readb_tx");
+    fs::create_dir(&readb_tx).unwrap();
+
     let sledb = tempdir.path().join("sledb");
     fs::create_dir(&sledb).unwrap();
 
@@ -48,8 +52,13 @@ fn benchmark_write(c: &mut Criterion) {
         path: Some(readb),
         cache_size: None,
         index_type: readb::IndexType::HashMap,
-    })
-    .unwrap();
+        ..Default::default()
+    });
+
+    let mut readb_tx_instance = readb::DefaultDatabase::new(readb::DatabaseSettings {
+        path: Some(readb_tx),
+        ..Default::default()
+    });
 
     for (key, value) in data.iter() {
         readb_instance.put(key.as_str(), value.as_bytes()).unwrap();
@@ -101,6 +110,25 @@ fn benchmark_write(c: &mut Criterion) {
                             let _ = readb_instance
                                 .put(black_box(key), black_box(value.as_bytes()))
                                 .unwrap();
+                        }
+                    }
+                }
+            })
+        });
+
+        c.bench_function(format!("readb_write_tx_{}", op).as_str(), |b| {
+            b.iter(|| {
+                let mut tx = readb_tx_instance.tx().unwrap();
+                for task in tasks.iter() {
+                    match task {
+                        Operation::Read(key) => {
+                            tx.commit().unwrap();
+
+                            tx = readb_tx_instance.tx().unwrap();
+                            let _ = readb_instance.get(black_box(key)).unwrap();
+                        }
+                        Operation::Write((key, value)) => {
+                            tx.put(black_box(key), black_box(value.as_bytes())).unwrap();
                         }
                     }
                 }
